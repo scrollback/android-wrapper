@@ -1,0 +1,17 @@
+<html>
+    <body>
+        <script type="text/javascript">
+                function showAndroidToast(toast) {
+                    Android.showToast(toast);
+                }
+                function textEcho(message) {
+                    document.getElementById('textbox').innerHTML = message;
+                }
+        </script>
+        <div style="width:200px; margin:0 auto;">
+            <input type="button" value="Say hello" onClick="showAndroidToast('Hello Android!')" />
+        </div>
+        <p id="textbox"></p>
+
+    </body>
+</html>
