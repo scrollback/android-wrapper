@@ -1,24 +1,50 @@
 package com.karthikb351.scrollback;
 
-import android.app.PendingIntent;
+import android.accounts.AccountManager;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
+import com.facebook.Request;
+import com.facebook.Response;
+import com.facebook.Session;
+import com.facebook.SessionState;
+import com.facebook.model.GraphObject;
+import com.facebook.model.GraphUser;
+import com.google.android.gms.auth.GoogleAuthException;
+import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.UserRecoverableAuthException;
+import com.google.android.gms.common.AccountPicker;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.plus.Plus;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -26,108 +52,166 @@ public class MainActivity extends ActionBarActivity {
 
     private static final String TAG = "android-wrapper-scrollback";
 
+    public static final String PROPERTY_REG_ID = "registration_id";
+    private static final String PROPERTY_APP_VERSION = "appVersion";
+
+    String SENDER_ID = "859192594431";
+
+    private static final int REQ_SIGN_IN_REQUIRED = 55664;
+
+    private static final int SOME_REQUEST_CODE = 12323;
+
+    private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+
+    private String accountName;
+    private String accessToken;
+
+    GoogleCloudMessaging gcm;
+    String regid;
+
     private WebView mWebView;
     private ProgressBar mProgressBar;
 
-    // GoogleApiClient wraps our service connection to Google Play services and
-    // provides access to the users sign in state and Google's APIs.
-    private GoogleApiClient mGoogleApiClient;
+    private boolean inProgress = false;
 
+    ProgressDialog dialog;
 
-    private static final int STATE_DEFAULT = 0;
-    private static final int STATE_SIGN_IN = 1;
-    private static final int STATE_IN_PROGRESS = 2;
-    // We use mSignInProgress to track whether user has clicked sign in.
-    // mSignInProgress can be one of three values:
-    //
-    //       STATE_DEFAULT: The default state of the application before the user
-    //                      has clicked 'sign in', or after they have clicked
-    //                      'sign out'.  In this state we will not attempt to
-    //                      resolve sign in errors and so will display our
-    //                      Activity in a signed out state.
-    //       STATE_SIGN_IN: This state indicates that the user has clicked 'sign
-    //                      in', so resolve successive errors preventing sign in
-    //                      until the user has successfully authorized an account
-    //                      for our app.
-    //   STATE_IN_PROGRESS: This state indicates that we have started an intent to
-    //                      resolve an error, and so we should not start further
-    //                      intents until the current intent completes.
-    private int mSignInProgress;
-
-
-    private static final int RC_SIGN_IN = 0;
-
-    private static final int DIALOG_PLAY_SERVICES_ERROR = 0;
-
-    private static final String SAVED_PROGRESS = "sign_in_progress";
-
-
-    // Used to store the PendingIntent most recently returned by Google Play
-    // services until the user clicks 'sign in'.
-    private PendingIntent mSignInIntent;
-
-    // Used to store the error code most recently returned by Google Play services
-    // until the user clicks 'sign in'.
-    private int mSignInError;
+    ArrayList<String> permissions;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mWebView=(WebView)findViewById(R.id.main_webview);
-        mWebView.setWebViewClient(mWebViewClient);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.getSettings().setDomStorageEnabled(true);
-        mWebView.addJavascriptInterface(new ScrollbackInterface(this), "Android");
-        mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
-        mWebView.loadUrl("file:///android_asset/index.html");
 
+        // Check device for Play Services APK. If check succeeds, proceed with
+        //  GCM registration.
+        if (checkPlayServices()) {
+            gcm = GoogleCloudMessaging.getInstance(this);
+            regid = getRegistrationId(getApplicationContext());
+        } else {
+            Log.i(TAG, "No valid Google Play Services APK found.");
+        }
 
+        // Reload the old WebView content
         if (savedInstanceState != null) {
-            mSignInProgress = savedInstanceState
-                    .getInt(SAVED_PROGRESS, STATE_DEFAULT);
+            mWebView.restoreState(savedInstanceState);
         }
+        // Create the WebView
+        else {
+            mWebView.setWebViewClient(mWebViewClient);
+            mWebView.getSettings().setJavaScriptEnabled(true);
+            mWebView.setScrollBarStyle(WebView.SCROLLBARS_OUTSIDE_OVERLAY);
+            mWebView.getSettings().setBuiltInZoomControls(true);
+            mWebView.getSettings().setJavaScriptEnabled(true);
+            mWebView.getSettings().setDomStorageEnabled(true);
 
-        mGoogleApiClient = buildGoogleApiClient();
-    }
+            // Set cache size to 8 mb by default. should be more than enough
+            mWebView.getSettings().setAppCacheMaxSize(1024*1024*8);
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mGoogleApiClient.connect();
-    }
+            File dir = getCacheDir();
 
-    @Override
-    protected void onStop() {
-        super.onStop();
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
 
-        if (mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.disconnect();
+            mWebView.getSettings().setAppCachePath(dir.getPath());
+            mWebView.getSettings().setAllowFileAccess(true);
+            mWebView.getSettings().setAppCacheEnabled(true);
+
+            mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+
+            mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
+
+                @JavascriptInterface
+                public void googleLogin() {
+                    Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
+                            false, null, null, null, null);
+                    startActivityForResult(intent, SOME_REQUEST_CODE);
+                }
+
+                @JavascriptInterface
+                public void facebookLogin() {
+
+                    permissions = new ArrayList<String>();
+                    permissions.add("email");
+
+                    Session session = Session.getActiveSession();
+
+                    if(session==null)
+                        session = new Session(MainActivity.this);
+
+                    if (!session.isOpened()) {
+                        session.openForRead(new Session.OpenRequest(MainActivity.this).setCallback(statusCallback).setPermissions(permissions));
+                    } else {
+                        Session.openActiveSession(MainActivity.this, true, statusCallback);
+                    }
+
+
+                }
+
+                @JavascriptInterface
+                public void registerGCM() {
+
+                    registerBackground();
+
+                }
+            }, "Android");
+
+//            mWebView.loadUrl("https://stage.scrollback.io/me");
+            mWebView.loadUrl("file:///android_asset/index.html");
         }
+        mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
+    }
+
+    void emitGoogleLoginEvent(String token) {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'google', 'email': '"+accountName+"', 'token': '"+token+"'} }))");
+    }
+
+    void emitFacebookLoginEvent(String email, String token)   {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'facebook', 'email': '"+email+"', 'token': '"+token+"'} }))");
+
+    }
+
+    void emitGCMRegisterEvent(String regid, String uuid) {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '"+regid+"', 'uuid': '"+uuid+"'} }))");
+
+    }
+
+    void setWebViewText(String m)
+    {
+        mWebView.loadUrl("javascript:textEcho('"+m+"');");
+        /* javascript:window.dispatchEvent(new CustomEvent('login', {provider: 'google', token: ''}))  */
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt(SAVED_PROGRESS, mSignInProgress);
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Check if the key event was the Back button and if there's history
+        if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {
+            mWebView.goBack();
+            return true;
+        }
+        // If it wasn't the Back key or there's no web page history, bubble up to the default
+        // system behavior (probably exit the activity)
+        return super.onKeyDown(keyCode, event);
     }
-
-//    @Override
-//    public boolean onKeyDown(int keyCode, KeyEvent event) {
-//        // Check if the key event was the Back button and if there's history
-//        if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {
-//            mWebView.goBack();
-//            return true;
-//        }
-//        // If it wasn't the Back key or there's no web page history, bubble up to the default
-//        // system behavior (probably exit the activity)
-//        return super.onKeyDown(keyCode, event);
-//    }
 
     private WebViewClient mWebViewClient = new WebViewClient() {
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (Uri.parse(url).getHost().equals("scrollback.io")) {
+                // This is my web site, so do not override; let my WebView load the page
+                return false;
+            }
+            // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            startActivity(intent);
+            return true;
+        }
 
     };
 
@@ -143,120 +227,329 @@ public class MainActivity extends ActionBarActivity {
         switch (item.getItemId()) {
             case R.id.call_js:
                 String time = Calendar.getInstance().getTime().toString();
-                mWebView.loadUrl("javascript:textEcho('Hello "+time+"!');");
+                setWebViewText(time);
                 return true;
+            case R.id.signin:
+                Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
+                        false, null, null, null, null);
+                startActivityForResult(intent, SOME_REQUEST_CODE);
+
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
-    GoogleApiClient.ConnectionCallbacks mConnectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
-
-        /* onConnected is called when our Activity successfully connects to Google
-       * Play services.  onConnected indicates that an account was selected on the
-       * device, that the selected account has granted any requested permissions to
-       * our app and that we were able to establish a service connection to Google
-       * Play services.
-       */
-        @Override
-        public void onConnected(Bundle bundle) {
-
-            mSignInProgress = STATE_DEFAULT;
-
-        }
-
-        @Override
-        public void onConnectionSuspended(int i) {
-
-        }
-
-
-    };
-
-    GoogleApiClient.OnConnectionFailedListener mOnConnectionFailedListener = new GoogleApiClient.OnConnectionFailedListener() {
-        @Override
-        public void onConnectionFailed(ConnectionResult connectionResult) {
-
-        }
-    };
-
-    private GoogleApiClient buildGoogleApiClient() {
-        // When we build the GoogleApiClient we specify where connected and
-        // connection failed callbacks should be returned, which Google APIs our
-        // app uses and which OAuth 2.0 scopes our app requests.
-        return new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(mConnectionCallbacks)
-                .addOnConnectionFailedListener(mOnConnectionFailedListener)
-                .addApi(Plus.API, Plus.PlusOptions.builder().build())
-                .addScope(Plus.SCOPE_PLUS_LOGIN)
-                .build();
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Session session = Session.getActiveSession();
+        Session.saveSession(session, outState);
+        mWebView.saveState(outState);
     }
 
-
-    /* Starts an appropriate intent or dialog for user interaction to resolve
-   * the current error preventing the user from being signed in.  This could
-   * be a dialog allowing the user to select an account, an activity allowing
-   * the user to consent to the permissions being requested by your app, a
-   * setting to enable device networking, etc.
-   */
-    private void resolveSignInError() {
-        if (mSignInIntent != null) {
-            // We have an intent which will allow our user to sign in or
-            // resolve an error.  For example if the user needs to
-            // select an account to sign in with, or if they need to consent
-            // to the permissions your app is requesting.
-
-            try {
-                // Send the pending intent that we stored on the most recent
-                // OnConnectionFailed callback.  This will allow the user to
-                // resolve the error currently preventing our connection to
-                // Google Play services.
-                mSignInProgress = STATE_IN_PROGRESS;
-                startIntentSenderForResult(mSignInIntent.getIntentSender(),
-                        RC_SIGN_IN, null, 0, 0, 0);
-            } catch (IntentSender.SendIntentException e) {
-                Log.i(TAG, "Sign in intent could not be sent: "
-                        + e.getLocalizedMessage());
-                // The intent was canceled before it was sent.  Attempt to connect to
-                // get an updated ConnectionResult.
-                mSignInProgress = STATE_SIGN_IN;
-                mGoogleApiClient.connect();
-            }
-        } else {
-            // Google Play services wasn't able to provide an intent for some
-            // error types, so we show the default Google Play services error
-            // dialog which may still start an intent on our behalf if the
-            // user can resolve the issue.
-            showDialog(DIALOG_PLAY_SERVICES_ERROR);
-        }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if(Session.getActiveSession()!=null)
+            Session.getActiveSession().addCallback(statusCallback);
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(Session.getActiveSession()!=null)
+            Session.getActiveSession().removeCallback(statusCallback);
+    }
+
 
 
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode,
-                                    Intent data) {
-        switch (requestCode) {
-            case RC_SIGN_IN:
-                if (resultCode == RESULT_OK) {
-                    // If the error resolution was successful we should continue
-                    // processing errors.
-                    mSignInProgress = STATE_SIGN_IN;
-                } else {
-                    // If the error resolution was not successful or the user canceled,
-                    // we should stop processing errors.
-                    mSignInProgress = STATE_DEFAULT;
-                }
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-                if (!mGoogleApiClient.isConnecting()) {
-                    // If Google Play services resolved the issue with a dialog then
-                    // onStart is not called so we need to re-attempt connection here.
-                    mGoogleApiClient.connect();
-                }
-                break;
+        if(Session.getActiveSession()!=null)
+            Session.getActiveSession().onActivityResult(MainActivity.this, requestCode, resultCode, data);
+
+        if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
+            accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+
+            new RetrieveGoogleTokenTask().execute(accountName);
+        }
+
+        if (requestCode == REQ_SIGN_IN_REQUIRED && resultCode == RESULT_OK) {
+            // We had to sign in - now we can finish off the token request.
+            new RetrieveGoogleTokenTask().execute(accountName);
         }
     }
 
-    AccountMana
+    Session.StatusCallback statusCallback = new Session.StatusCallback() {
+        @Override
+        public void call(Session session, SessionState state, Exception exception) {
+            processSessionStatus(session, state, exception);
+        }
+    };
 
+    public void processSessionStatus(final Session session, SessionState state, Exception exception) {
+
+        if(session != null && session.isOpened()) {
+
+            if(session.getPermissions().contains("email")) {
+                session.getAccessToken();
+                //Show Progress Dialog
+                dialog = new ProgressDialog(MainActivity.this);
+                dialog.setMessage("Logging into Facebook..");
+                dialog.show();
+                Request.newMeRequest(session, new Request.GraphUserCallback() {
+                    @Override
+                    public void onCompleted(GraphUser user, Response response) {
+
+                        if (dialog != null && dialog.isShowing()) {
+                            dialog.dismiss();
+                        }
+                        if (user != null) {
+                            Map<String, Object> responseMap = new HashMap<String, Object>();
+                            GraphObject graphObject = response.getGraphObject();
+                            responseMap = graphObject.asMap();
+                            Log.i("FbLogin", "Response Map KeySet - " + responseMap.keySet());
+
+                            String fb_id = user.getId();
+                            String email = null;
+                            String name = (String) responseMap.get("name");
+                            if (responseMap.get("email") != null) {
+                                email = responseMap.get("email").toString();
+                                emitFacebookLoginEvent(email, session.getAccessToken());
+                            } else {
+                                //Clear all session info & ask user to login again
+                                Session session = Session.getActiveSession();
+                                if (session != null) {
+                                    session.closeAndClearTokenInformation();
+                                }
+                            }
+                        }
+                    }
+                }).executeAsync();
+
+            } else {
+                session.requestNewReadPermissions(new Session.NewPermissionsRequest(MainActivity.this, permissions));
+            }
+        }
+    }
+
+
+    private class RetrieveGoogleTokenTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            dialog = new ProgressDialog(MainActivity.this);
+            dialog.setMessage("Logging into Google..");
+            dialog.show();
+        }
+
+        @Override
+        protected String doInBackground(String... params) {
+            String accountName = params[0];
+            String scopes = "oauth2:profile email";
+            String token = null;
+            try {
+                token = GoogleAuthUtil.getToken(getApplicationContext(), accountName, scopes);
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            } catch (UserRecoverableAuthException e) {
+                startActivityForResult(e.getIntent(), REQ_SIGN_IN_REQUIRED);
+            } catch (GoogleAuthException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            return token;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+            if (dialog != null && dialog.isShowing()) {
+                dialog.dismiss();
+            }
+            if(s == null)
+                Toast.makeText(MainActivity.this,"Unauthorized. Requesting permission", Toast.LENGTH_SHORT).show();
+            else
+            {
+                Toast.makeText(MainActivity.this,"Signed in", Toast.LENGTH_SHORT).show();
+                emitGoogleLoginEvent(s);
+                accessToken = s;
+            }
+        }
+    }
+
+    private class DeleteTokenTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            inProgress = true;
+        }
+
+        @Override
+        protected String doInBackground(String... params) {
+            String accessToken = params[0];
+            String result = null;
+            try {
+                GoogleAuthUtil.clearToken (getApplicationContext(), accessToken);
+                result = "true";
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            } catch (GoogleAuthException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+            Toast.makeText(MainActivity.this,"Cleared", Toast.LENGTH_SHORT).show();
+            inProgress = false;
+
+        }
+    }
+
+    /**
+     * Registers the application with GCM servers asynchronously.
+     * <p>
+     * Stores the registration id, app versionCode, and expiration time in the application's
+     * shared preferences.
+     */
+    private void registerBackground() {
+        new AsyncTask<Void, Void, String>() {
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                dialog = new ProgressDialog(MainActivity.this);
+                dialog.setMessage("Registering with Google..");
+                dialog.show();
+            }
+
+            @Override
+            protected String doInBackground(Void... params) {
+                String msg = "";
+                try {
+                    if (gcm == null) {
+                        gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
+                    }
+                    regid = gcm.register(SENDER_ID);
+                    msg = "Device registered, registration id=" + regid;
+
+                    // You should send the registration ID to your server over HTTP, so it
+                    // can use GCM/HTTP or CCS to send messages to your app.
+
+                    // For this demo: we don't need to send it because the device will send
+                    // upstream messages to a server that echo back the message using the
+                    // 'from' address in the message.
+
+                    // Save the regid - no need to register again.
+                    setRegistrationId(getApplicationContext(), regid);
+                } catch (IOException ex) {
+                    msg = "Error :" + ex.getMessage();
+                }
+                return msg;
+            }
+
+            @Override
+            protected void onPostExecute(String msg) {
+                if (dialog != null && dialog.isShowing()) {
+                    dialog.dismiss();
+                }
+                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+                String uuid = Settings.Secure.getString(getApplicationContext().getContentResolver(),
+                        Settings.Secure.ANDROID_ID);
+
+                emitGCMRegisterEvent(regid, uuid);
+            }
+        }.execute(null, null, null);
+    }
+
+
+    /**
+     * Stores the registration id, app versionCode, and expiration time in the application's
+     * {@code SharedPreferences}.
+     *
+     * @param context application's context.
+     * @param regId registration id
+     */
+    private void setRegistrationId(Context context, String regId) {
+        final SharedPreferences prefs = getGCMPreferences(context);
+        int appVersion = getAppVersion(context);
+        Log.v(TAG, "Saving regId on app version " + appVersion);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PROPERTY_REG_ID, regId);
+        editor.putInt(PROPERTY_APP_VERSION, appVersion);
+        editor.commit();
+    }
+
+    /**
+     * Gets the current registration id for application on GCM service.
+     * <p>
+     * If result is empty, the registration has failed.
+     *
+     * @return registration id, or empty string if the registration is not
+     *         complete.
+     */
+    private String getRegistrationId(Context context) {
+        final SharedPreferences prefs = getGCMPreferences(context);
+        String registrationId = prefs.getString(PROPERTY_REG_ID, "");
+        if (registrationId.length() == 0) {
+            Log.v(TAG, "Registration not found.");
+            return "";
+        }
+        // check if app was updated; if so, it must clear registration id to
+        // avoid a race condition if GCM sends a message
+        int registeredVersion = prefs.getInt(PROPERTY_APP_VERSION, Integer.MIN_VALUE);
+        int currentVersion = getAppVersion(context);
+        if (registeredVersion != currentVersion) {
+            Log.v(TAG, "App version changed or registration expired.");
+            return "";
+        }
+        return registrationId;
+    }
+
+    /**
+     * @return Application's version code from the {@code PackageManager}.
+     */
+    private static int getAppVersion(Context context) {
+        try {
+            PackageInfo packageInfo = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0);
+            return packageInfo.versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            // should never happen
+            throw new RuntimeException("Could not get package name: " + e);
+        }
+    }
+
+    /**
+     * @return Application's {@code SharedPreferences}.
+     */
+    private SharedPreferences getGCMPreferences(Context context) {
+        return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+    }
+
+    /**
+     * Check the device to make sure it has the Google Play Services APK. If
+     * it doesn't, display a dialog that allows users to download the APK from
+     * the Google Play Store or enable it in the device's system settings.
+     */
+    private boolean checkPlayServices() {
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this,
+                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            } else {
+                Log.i(TAG, "This device is not supported.");
+                finish();
+            }
+            return false;
+        }
+        return true;
+    }
 }

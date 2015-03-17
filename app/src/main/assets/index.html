@@ -7,11 +7,43 @@
                 function textEcho(message) {
                     document.getElementById('textbox').innerHTML = message;
                 }
+
+                window.onload = function () {
+                    document.getElementById('google-login').onclick = function () {
+                        Android.googleLogin();
+                    }
+                    document.getElementById('facebook-login').onclick = function () {
+                        Android.facebookLogin();
+                    }
+                    document.getElementById('gcm-register').onclick = function () {
+                        Android.registerGCM();
+                    }
+
+                    window.addEventListener('login', function (evt) {
+                        document.getElementById('textbox').innerHTML =
+                            JSON.stringify(evt.detail, null, 4);
+                    });
+                    window.addEventListener('gcm_register', function (evt) {
+                        document.getElementById('gcm').innerHTML =
+                            JSON.stringify(evt.detail, null, 4);
+                    });
+                }
+
         </script>
         <div style="width:200px; margin:0 auto;">
-            <input type="button" value="Say hello" onClick="showAndroidToast('Hello Android!')" />
+
+            <button id='google-login'>Sign in with Google</button>
+            <br/>
+            <br/>
+            <button id='facebook-login'>Sign in with Facebook</button>
+            <br/>
+            <br/>
+            <button id='gcm-register'>Register with GCM</button>
+            <br/>
+
         </div>
         <p id="textbox"></p>
+        <p id="gcm"></p>
 
     </body>
 </html>

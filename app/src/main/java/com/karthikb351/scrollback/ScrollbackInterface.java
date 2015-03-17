@@ -9,7 +9,7 @@ import android.widget.Toast;
 /**
  * Created by karthikbalakrishnan on 12/03/15.
  */
-public class ScrollbackInterface {
+public abstract class ScrollbackInterface {
 
     Context mContext;
 
@@ -20,7 +20,14 @@ public class ScrollbackInterface {
 
     /** Show a toast from the web page */
     @JavascriptInterface
-    public void showToast(String toast) {
+    public void showToast(String toast/*, Function f*/) {
         Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
+
     }
+
+    public abstract void googleLogin();
+
+    public abstract void facebookLogin();
+
+    public abstract void registerGCM();
 }
