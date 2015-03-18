@@ -30,4 +30,6 @@ public abstract class ScrollbackInterface {
     public abstract void facebookLogin();
 
     public abstract void registerGCM();
+
+    public abstract void onFinishedLoading();
 }

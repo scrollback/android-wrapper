@@ -127,6 +127,11 @@ public class MainActivity extends ActionBarActivity {
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
                 @JavascriptInterface
+                public void onFinishedLoading() {
+                    // TODO: hide loading spinner
+                }
+
+                @JavascriptInterface
                 public void googleLogin() {
                     Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
                             false, null, null, null, null);
