@@ -5,7 +5,6 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -22,7 +21,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
-import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -43,9 +41,6 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
-import org.apache.http.client.utils.URLEncodedUtils;
-
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -92,7 +87,7 @@ public class MainActivity extends ActionBarActivity {
 
         setContentView(R.layout.activity_main);
 
-        mWebView=(WebView)findViewById(R.id.main_webview);
+        mWebView = (WebView) findViewById(R.id.main_webview);
 
         mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
 
@@ -163,7 +158,7 @@ public class MainActivity extends ActionBarActivity {
 
                     Session session = Session.getActiveSession();
 
-                    if(session==null)
+                    if (session == null)
                         session = new Session(MainActivity.this);
 
                     if (!session.isOpened()) {
@@ -206,22 +201,21 @@ public class MainActivity extends ActionBarActivity {
     }
 
     void emitGoogleLoginEvent(String token) {
-        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'google', 'email': '"+accountName+"', 'token': '"+token+"'} }))");
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'google', 'email': '" + accountName + "', 'token': '" + token + "'} }))");
     }
 
-    void emitFacebookLoginEvent(String email, String token)   {
-        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'facebook', 'email': '"+email+"', 'token': '"+token+"'} }))");
+    void emitFacebookLoginEvent(String email, String token) {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'facebook', 'email': '" + email + "', 'token': '" + token + "'} }))");
 
     }
 
     void emitGCMRegisterEvent(String regid, String uuid, String model) {
-        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '"+regid+"', 'uuid': '"+uuid+"', 'model': '"+model+"'} }))");
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '" + regid + "', 'uuid': '" + uuid + "', 'model': '" + model + "'} }))");
 
     }
 
-    void setWebViewText(String m)
-    {
-        mWebView.loadUrl("javascript:textEcho('"+m+"');");
+    void setWebViewText(String m) {
+        mWebView.loadUrl("javascript:textEcho('" + m + "');");
         /* javascript:window.dispatchEvent(new CustomEvent('login', {provider: 'google', token: ''}))  */
     }
 
@@ -244,19 +238,18 @@ public class MainActivity extends ActionBarActivity {
             Uri uri = Uri.parse(url);
             if (uri.getHost().equals("harry.scrollback.io")) {
                 String s = uri.getQueryParameter("android");
-                if(s == null) {
-                    if(uri.toString().contains("?"))
-                        view.loadUrl(url+"&android");
+                if (s == null) {
+                    if (uri.toString().contains("?"))
+                        view.loadUrl(url + "&android");
                     else
-                        view.loadUrl(url+"?android");
+                        view.loadUrl(url + "?android");
                     return true;
                 }
                 // This is my web site, so do not override; let my WebView load the page
                 return false;
 
 
-            }
-            else {
+            } else {
                 // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(intent);
@@ -308,24 +301,22 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if(Session.getActiveSession()!=null)
+        if (Session.getActiveSession() != null)
             Session.getActiveSession().addCallback(statusCallback);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if(Session.getActiveSession()!=null)
+        if (Session.getActiveSession() != null)
             Session.getActiveSession().removeCallback(statusCallback);
     }
-
-
 
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        if(Session.getActiveSession()!=null)
+        if (Session.getActiveSession() != null)
             Session.getActiveSession().onActivityResult(MainActivity.this, requestCode, resultCode, data);
 
         if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
@@ -349,9 +340,9 @@ public class MainActivity extends ActionBarActivity {
 
     public void processSessionStatus(final Session session, SessionState state, Exception exception) {
 
-        if(session != null && session.isOpened()) {
+        if (session != null && session.isOpened()) {
 
-            if(session.getPermissions().contains("email")) {
+            if (session.getPermissions().contains("email")) {
                 session.getAccessToken();
                 //Show Progress Dialog
                 dialog = new ProgressDialog(MainActivity.this);
@@ -427,11 +418,10 @@ public class MainActivity extends ActionBarActivity {
             if (dialog != null && dialog.isShowing()) {
                 dialog.dismiss();
             }
-            if(s == null)
-                Toast.makeText(MainActivity.this,"Unauthorized. Requesting permission", Toast.LENGTH_SHORT).show();
-            else
-            {
-                Toast.makeText(MainActivity.this,"Signed in", Toast.LENGTH_SHORT).show();
+            if (s == null)
+                Toast.makeText(MainActivity.this, "Unauthorized. Requesting permission", Toast.LENGTH_SHORT).show();
+            else {
+                Toast.makeText(MainActivity.this, "Signed in", Toast.LENGTH_SHORT).show();
                 emitGoogleLoginEvent(s);
                 accessToken = s;
             }
@@ -451,7 +441,7 @@ public class MainActivity extends ActionBarActivity {
             String accessToken = params[0];
             String result = null;
             try {
-                GoogleAuthUtil.clearToken (getApplicationContext(), accessToken);
+                GoogleAuthUtil.clearToken(getApplicationContext(), accessToken);
                 result = "true";
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
@@ -464,7 +454,7 @@ public class MainActivity extends ActionBarActivity {
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
-            Toast.makeText(MainActivity.this,"Cleared", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Cleared", Toast.LENGTH_SHORT).show();
             inProgress = false;
 
         }
@@ -472,7 +462,7 @@ public class MainActivity extends ActionBarActivity {
 
     /**
      * Registers the application with GCM servers asynchronously.
-     * <p>
+     * <p/>
      * Stores the registration id, app versionCode, and expiration time in the application's
      * shared preferences.
      */
@@ -532,7 +522,7 @@ public class MainActivity extends ActionBarActivity {
      * {@code SharedPreferences}.
      *
      * @param context application's context.
-     * @param regId registration id
+     * @param regId   registration id
      */
     private void setRegistrationId(Context context, String regId) {
         final SharedPreferences prefs = getGCMPreferences(context);
@@ -546,11 +536,11 @@ public class MainActivity extends ActionBarActivity {
 
     /**
      * Gets the current registration id for application on GCM service.
-     * <p>
+     * <p/>
      * If result is empty, the registration has failed.
      *
      * @return registration id, or empty string if the registration is not
-     *         complete.
+     * complete.
      */
     private String getRegistrationId(Context context) {
         final SharedPreferences prefs = getGCMPreferences(context);
