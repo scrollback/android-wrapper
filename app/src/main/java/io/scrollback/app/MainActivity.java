@@ -178,8 +178,14 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-            mWebView.loadUrl("http://harry.scrollback.io/me?android=true");
+            mWebView.loadUrl("https://stage.scrollback.io/me?android=true");
 
+            mWebView.setOnLongClickListener(new View.OnLongClickListener() {
+
+                public boolean onLongClick(View v) {
+                    return true;
+                }
+            });
             showLoading();
 //            mWebView.loadUrl("file:///android_asset/index.html");
         }
@@ -236,7 +242,7 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             Uri uri = Uri.parse(url);
-            if (uri.getHost().equals("harry.scrollback.io")) {
+            if (uri.getHost().equals("stage.scrollback.io")) {
                 String s = uri.getQueryParameter("android");
                 if (s == null) {
                     if (uri.toString().contains("?"))
@@ -255,13 +261,6 @@ public class MainActivity extends ActionBarActivity {
                 startActivity(intent);
                 return true;
             }
-        }
-
-        // Ignore SSL errors
-        @Override
-        public void onReceivedSslError(WebView view, SslErrorHandler handler,
-                                       SslError error) {
-            handler.proceed();
         }
 
     };
