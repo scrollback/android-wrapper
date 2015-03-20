@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,7 +18,10 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.webkit.JavascriptInterface;
+import android.webkit.SslErrorHandler;
+import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -38,19 +42,22 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class MainActivity extends ActionBarActivity {
 
 
-    private static final String TAG = "android-wrapper-scrollback";
+    private static final String TAG = "android-wrapper";
 
     public static final String PROPERTY_REG_ID = "registration_id";
     private static final String PROPERTY_APP_VERSION = "appVersion";
@@ -83,6 +90,9 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mWebView=(WebView)findViewById(R.id.main_webview);
+
+        mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
@@ -96,10 +106,12 @@ public class MainActivity extends ActionBarActivity {
             Log.i(TAG, "No valid Google Play Services APK found.");
         }
 
+
         // Reload the old WebView content
         if (savedInstanceState != null) {
             mWebView.restoreState(savedInstanceState);
         }
+
         // Create the WebView
         else {
             mWebView.setWebViewClient(mWebViewClient);
@@ -128,7 +140,12 @@ public class MainActivity extends ActionBarActivity {
 
                 @JavascriptInterface
                 public void onFinishedLoading() {
-                    // TODO: hide loading spinner
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            hideLoading();
+                        }
+                    });
                 }
 
                 @JavascriptInterface
@@ -166,10 +183,26 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-//            mWebView.loadUrl("https://stage.scrollback.io/me");
-            mWebView.loadUrl("file:///android_asset/index.html");
+            mWebView.loadUrl("http://harry.scrollback.io/me?android=true");
+
+            showLoading();
+//            mWebView.loadUrl("file:///android_asset/index.html");
         }
-        mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
+    }
+
+    void hideLoading() {
+        mProgressBar.setVisibility(View.INVISIBLE);
+        mWebView.setVisibility(View.VISIBLE);
+    }
+
+    void showLoading() {
+
+//        mLoading = (LinearLayout)findViewById(R.id.main_activity_progress);
+//        final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
+//        mLoading.setAnimation(animationFadeIn);
+
+        mProgressBar.setVisibility(View.VISIBLE);
+        mWebView.setVisibility(View.INVISIBLE);
     }
 
     void emitGoogleLoginEvent(String token) {
@@ -181,8 +214,8 @@ public class MainActivity extends ActionBarActivity {
 
     }
 
-    void emitGCMRegisterEvent(String regid, String uuid) {
-        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '"+regid+"', 'uuid': '"+uuid+"'} }))");
+    void emitGCMRegisterEvent(String regid, String uuid, String model) {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '"+regid+"', 'uuid': '"+uuid+"', 'model': '"+model+"'} }))");
 
     }
 
@@ -208,14 +241,34 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (Uri.parse(url).getHost().equals("scrollback.io")) {
+            Uri uri = Uri.parse(url);
+            if (uri.getHost().equals("harry.scrollback.io")) {
+                String s = uri.getQueryParameter("android");
+                if(s == null) {
+                    if(uri.toString().contains("?"))
+                        view.loadUrl(url+"&android");
+                    else
+                        view.loadUrl(url+"?android");
+                    return true;
+                }
                 // This is my web site, so do not override; let my WebView load the page
                 return false;
+
+
             }
-            // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(intent);
-            return true;
+            else {
+                // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+                return true;
+            }
+        }
+
+        // Ignore SSL errors
+        @Override
+        public void onReceivedSslError(WebView view, SslErrorHandler handler,
+                                       SslError error) {
+            handler.proceed();
         }
 
     };
@@ -429,9 +482,9 @@ public class MainActivity extends ActionBarActivity {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                dialog = new ProgressDialog(MainActivity.this);
-                dialog.setMessage("Registering with Google..");
-                dialog.show();
+//                dialog = new ProgressDialog(MainActivity.this);
+//                dialog.setMessage("Registering with Google..");
+//                dialog.show();
             }
 
             @Override
@@ -464,11 +517,11 @@ public class MainActivity extends ActionBarActivity {
                 if (dialog != null && dialog.isShowing()) {
                     dialog.dismiss();
                 }
-                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+
+//                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
                 String uuid = Settings.Secure.getString(getApplicationContext().getContentResolver(),
                         Settings.Secure.ANDROID_ID);
-
-                emitGCMRegisterEvent(regid, uuid);
+                emitGCMRegisterEvent(regid, uuid, Build.MODEL);
             }
         }.execute(null, null, null);
     }
