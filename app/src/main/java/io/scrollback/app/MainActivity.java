@@ -52,6 +52,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
+import static android.webkit.WebSettings.LOAD_DEFAULT;
+
 
 public class MainActivity extends ActionBarActivity {
 
@@ -119,26 +121,20 @@ public class MainActivity extends ActionBarActivity {
         // Create the WebView
         else {
             mWebView.setWebViewClient(mWebViewClient);
-            mWebView.getSettings().setJavaScriptEnabled(true);
-            mWebView.setScrollBarStyle(WebView.SCROLLBARS_OUTSIDE_OVERLAY);
-            mWebView.getSettings().setBuiltInZoomControls(true);
-            mWebView.getSettings().setJavaScriptEnabled(true);
-            mWebView.getSettings().setDomStorageEnabled(true);
 
-            // Set cache size to 8 mb by default. should be more than enough
-            mWebView.getSettings().setAppCacheMaxSize(1024*1024*8);
+            WebSettings mWebSettings = mWebView.getSettings();
 
-            File dir = getCacheDir();
+            String appCachePath = getApplicationContext().getCacheDir().getAbsolutePath();
 
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-
-            mWebView.getSettings().setAppCachePath(dir.getPath());
-            mWebView.getSettings().setAllowFileAccess(true);
-            mWebView.getSettings().setAppCacheEnabled(true);
-
-            mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+            mWebSettings.setJavaScriptEnabled(true);
+            mWebSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+            mWebSettings.setSupportZoom(false);
+            mWebSettings.setSaveFormData(true);
+            mWebSettings.setDomStorageEnabled(true);
+            mWebSettings.setAppCacheEnabled(true);
+            mWebSettings.setAppCachePath(appCachePath);
+            mWebSettings.setAllowFileAccess(true);
+            mWebSettings.setCacheMode(LOAD_DEFAULT);
 
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
