@@ -1,4 +1,4 @@
-package com.karthikb351.scrollback;
+package io.scrollback.app;
 
 import android.accounts.AccountManager;
 import android.app.ProgressDialog;
@@ -50,8 +50,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class MainActivity extends ActionBarActivity {

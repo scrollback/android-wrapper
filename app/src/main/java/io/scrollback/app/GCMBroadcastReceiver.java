@@ -1,4 +1,4 @@
-package com.karthikb351.scrollback;
+package io.scrollback.app;
 
 import android.app.Activity;
 import android.content.ComponentName;

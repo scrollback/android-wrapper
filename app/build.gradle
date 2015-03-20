@@ -5,8 +5,8 @@ android {
     buildToolsVersion "21.1.2"
 
     defaultConfig {
-        applicationId "com.karthikb351.scrollback"
-        minSdkVersion 9
+        applicationId "io.scrollback.app"
+        minSdkVersion 14
         targetSdkVersion 21
         versionCode 1
         versionName "1.0"
