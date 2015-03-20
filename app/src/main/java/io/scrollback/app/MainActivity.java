@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -86,13 +87,18 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+
         mWebView=(WebView)findViewById(R.id.main_webview);
 
         mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
 
+        // Enable debugging in webview
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(true);
+            if (BuildConfig.DEBUG) {
+                WebView.setWebContentsDebuggingEnabled(true);
+            }
         }
 
         // Check device for Play Services APK. If check succeeds, proceed with
