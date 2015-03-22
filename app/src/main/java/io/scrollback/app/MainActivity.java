@@ -58,7 +58,7 @@ public class MainActivity extends ActionBarActivity {
     public static final String PROPERTY_REG_ID = "registration_id";
     private static final String PROPERTY_APP_VERSION = "appVersion";
 
-    String SENDER_ID = "859192594431";
+    String SENDER_ID = "73969137499";
 
     private static final int REQ_SIGN_IN_REQUIRED = 55664;
 
@@ -172,7 +172,6 @@ public class MainActivity extends ActionBarActivity {
 
                 @JavascriptInterface
                 public void registerGCM() {
-
                     registerBackground();
 
                 }
@@ -185,7 +184,7 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-            mWebView.loadUrl("https://stage.scrollback.io/me?android=true");
+            mWebView.loadUrl("https://stage.scrollback.io/me");
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
 
@@ -193,8 +192,8 @@ public class MainActivity extends ActionBarActivity {
                     return true;
                 }
             });
+
             showLoading();
-//            mWebView.loadUrl("file:///android_asset/index.html");
         }
     }
 

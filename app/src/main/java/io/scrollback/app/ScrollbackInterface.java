@@ -4,9 +4,7 @@ import android.content.Context;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
-/**
- * Created by karthikbalakrishnan on 12/03/15.
- */
+
 public abstract class ScrollbackInterface {
 
     Context mContext;
