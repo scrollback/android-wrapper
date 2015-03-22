@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -46,6 +47,9 @@ public class GcmIntentService extends IntentService {
                 // If it's a regular GCM message, do some work.
             } else if (GoogleCloudMessaging.
                     MESSAGE_TYPE_MESSAGE.equals(messageType)) {
+
+                Log.i("GCM Tag", extras.getString("text", "default"));
+                Log.i("GCM Tag", extras.getString("path", "/af/af/"));
 
                 // Post notification of received message.
                 sendNotification("Received: " + extras.toString());
