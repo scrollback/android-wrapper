@@ -180,6 +180,8 @@ public class MainActivity extends ActionBarActivity {
                 @JavascriptInterface
                 public void unregisterGCM() {
 
+                    unRegisterBackground();
+
                 }
             }, "Android");
 
