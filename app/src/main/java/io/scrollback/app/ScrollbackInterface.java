@@ -33,5 +33,7 @@ public abstract class ScrollbackInterface {
 
     public abstract void registerGCM();
 
+    public abstract void unregisterGCM();
+
     public abstract void onFinishedLoading();
 }

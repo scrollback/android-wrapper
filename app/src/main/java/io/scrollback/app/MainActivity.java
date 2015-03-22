@@ -176,6 +176,11 @@ public class MainActivity extends ActionBarActivity {
                     registerBackground();
 
                 }
+
+                @JavascriptInterface
+                public void unregisterGCM() {
+
+                }
             }, "Android");
 
             mWebView.loadUrl("https://stage.scrollback.io/me?android=true");
@@ -218,6 +223,10 @@ public class MainActivity extends ActionBarActivity {
     void emitGCMRegisterEvent(String regid, String uuid, String model) {
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '" + regid + "', 'uuid': '" + uuid + "', 'model': '" + model + "'} }))");
 
+    }
+
+    void emitGCMUnregisterEvent(String uuid) {
+        mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_unregister', { detail :{'uuid': '" + uuid + "'} }))");
     }
 
     void setWebViewText(String m) {
@@ -514,6 +523,58 @@ public class MainActivity extends ActionBarActivity {
             }
         }.execute(null, null, null);
     }
+
+
+    private void unRegisterBackground() {
+        new AsyncTask<Void, Void, String>() {
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+//                dialog = new ProgressDialog(MainActivity.this);
+//                dialog.setMessage("Registering with Google..");
+//                dialog.show();
+            }
+
+            @Override
+            protected String doInBackground(Void... params) {
+                String msg = "";
+                try {
+                    if (gcm == null) {
+                        gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
+                    }
+                    gcm.unregister();
+
+                    // You should send the registration ID to your server over HTTP, so it
+                    // can use GCM/HTTP or CCS to send messages to your app.
+
+                    // For this demo: we don't need to send it because the device will send
+                    // upstream messages to a server that echo back the message using the
+                    // 'from' address in the message.
+
+                    // Save the regid - no need to register again.
+                    setRegistrationId(getApplicationContext(), regid);
+                } catch (IOException ex) {
+                    msg = "Error :" + ex.getMessage();
+                }
+                return msg;
+            }
+
+            @Override
+            protected void onPostExecute(String msg) {
+                if (dialog != null && dialog.isShowing()) {
+                    dialog.dismiss();
+                }
+
+//                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+                String uuid = Settings.Secure.getString(getApplicationContext().getContentResolver(),
+                        Settings.Secure.ANDROID_ID);
+                emitGCMUnregisterEvent(Build.MODEL);
+            }
+        }.execute(null, null, null);
+    }
+
+
 
 
     /**
