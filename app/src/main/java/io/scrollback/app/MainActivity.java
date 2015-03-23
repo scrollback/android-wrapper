@@ -47,6 +47,8 @@ import static android.webkit.WebSettings.LOAD_DEFAULT;
 
 public class MainActivity extends ActionBarActivity {
 
+    public static final String DOMAIN = "stage.scrollback.io";
+    public static final String INDEX = "https://" + DOMAIN + "/me";
 
     private static final String TAG = "android-wrapper";
 
@@ -179,7 +181,7 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-            mWebView.loadUrl("https://stage.scrollback.io/me");
+            mWebView.loadUrl(INDEX);
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
 
@@ -247,15 +249,8 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             Uri uri = Uri.parse(url);
-            if (uri.getHost().equals("stage.scrollback.io")) {
-                String s = uri.getQueryParameter("android");
-                if (s == null) {
-                    if (uri.toString().contains("?"))
-                        view.loadUrl(url + "&android");
-                    else
-                        view.loadUrl(url + "?android");
-                    return true;
-                }
+
+            if (uri.getHost().equals(DOMAIN)) {
                 // This is my web site, so do not override; let my WebView load the page
                 return false;
 
