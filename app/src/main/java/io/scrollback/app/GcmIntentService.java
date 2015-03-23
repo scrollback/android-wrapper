@@ -58,7 +58,7 @@ public class GcmIntentService extends IntentService {
 
                 Notification notif = new Notification();
                 notif.setTitle(extras.getString("title", "default"));
-                notif.setMessage(extras.getString("subTitle", "default message"));
+                notif.setMessage(extras.getString("subtitle", "default message"));
 
                 notif.setPath("/"+extras.getString("path", "me"));
 
