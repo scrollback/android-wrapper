@@ -62,8 +62,10 @@ public class GcmIntentService extends IntentService {
 
                 notif.setPath("/"+extras.getString("path", "me"));
 
-                // Post notification of received message.
-                sendNotification(notif);
+                // Post notification of received message if application isn't open
+
+                if(!Scrollback.appOpen)
+                    sendNotification(notif);
             }
         }
         // Release the wake lock provided by the WakefulBroadcastReceiver.
