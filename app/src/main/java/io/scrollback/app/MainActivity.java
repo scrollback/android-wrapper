@@ -48,7 +48,8 @@ import static android.webkit.WebSettings.LOAD_DEFAULT;
 public class MainActivity extends ActionBarActivity {
 
     public static final String DOMAIN = "stage.scrollback.io";
-    public static final String INDEX = "https://" + DOMAIN + "/me";
+    public static final String INDEX = "https://" + DOMAIN;
+    public static final String PATH_ME = "/me";
 
     private static final String TAG = "android-wrapper";
 
@@ -181,7 +182,12 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-            mWebView.loadUrl(INDEX);
+            if(getIntent().hasExtra("scrollback_path")) {
+                Log.d("MainActivity got path", INDEX + getIntent().getStringExtra("scrollback_path"));
+                mWebView.loadUrl(INDEX + getIntent().getStringExtra("scrollback_path"));
+            }
+            else
+                mWebView.loadUrl(INDEX+PATH_ME);
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
 
@@ -287,6 +293,11 @@ public class MainActivity extends ActionBarActivity {
             Session.getActiveSession().removeCallback(statusCallback);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mWebView.destroy();
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
