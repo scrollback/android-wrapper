@@ -1,4 +1,4 @@
-package io.scrollback.app;
+package io.scrollback.app.gcm;
 
 import android.app.IntentService;
 import android.app.NotificationManager;
@@ -11,13 +11,18 @@ import android.util.Log;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import io.scrollback.app.MainActivity;
+import io.scrollback.app.Notification;
+import io.scrollback.app.R;
+import io.scrollback.app.Scrollback;
 
-public class GcmIntentService extends IntentService {
+
+public class GCMIntentService extends IntentService {
     public static final int NOTIFICATION_ID = 1;
     private NotificationManager mNotificationManager;
     NotificationCompat.Builder builder;
 
-    public GcmIntentService() {
+    public GCMIntentService() {
         super("GcmIntentService");
     }
 

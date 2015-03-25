@@ -209,9 +209,6 @@ public class MainActivity extends ActionBarActivity {
                 }
                 Session.setActiveSession(session);
                 session.addCallback(statusCallback);
-                if(session.getState().equals(SessionState.CREATED_TOKEN_LOADED)) {
-                    session.openForRead(new Session.OpenRequest(this).setCallback(statusCallback).setPermissions(permissions));
-                }
             }
         }
     }
