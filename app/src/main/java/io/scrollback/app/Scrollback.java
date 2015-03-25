@@ -4,9 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 
-/**
- * Created by karthikbalakrishnan on 23/03/15.
- */
+
 public class Scrollback extends Application implements Application.ActivityLifecycleCallbacks {
 
     public static boolean appOpen = false;

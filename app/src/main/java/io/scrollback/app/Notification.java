@@ -1,12 +1,10 @@
 package io.scrollback.app;
 
-/**
- * Created by karthikbalakrishnan on 23/03/15.
- */
+
 public class Notification {
 
     private String title = "";
-    private String message = "";
+    private String text = "";
     private String path = "";
 
     public String getTitle() {
@@ -17,12 +15,12 @@ public class Notification {
         this.title = title;
     }
 
-    public String getMessage() {
-        return message;
+    public String getText() {
+        return text;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setText(String text) {
+        this.text = text;
     }
 
     public String getPath() {

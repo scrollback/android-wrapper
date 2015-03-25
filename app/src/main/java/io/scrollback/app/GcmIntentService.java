@@ -8,13 +8,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
-/**
- * Created by karthikbalakrishnan on 19/03/15.
- */
+
 public class GcmIntentService extends IntentService {
     public static final int NOTIFICATION_ID = 1;
     private NotificationManager mNotificationManager;
@@ -52,19 +49,17 @@ public class GcmIntentService extends IntentService {
 
                 Log.d("gcm_payload", extras.toString());
 
-                Log.d("gcm_title", extras.getString("title", "default title"));
-                Log.d("gcm_subtitle", extras.getString("subtitle", "default message"));
-                Log.d("gcm_path", extras.getString("path", "default message"));
+                Log.d("gcm_title", extras.getString("title", "Scrollback"));
+                Log.d("gcm_subtitle", extras.getString("text", "There is new activity"));
+                Log.d("gcm_path", extras.getString("path", "me"));
 
                 Notification notif = new Notification();
-                notif.setTitle(extras.getString("title", "default"));
-                notif.setMessage(extras.getString("subtitle", "default message"));
-
+                notif.setTitle(extras.getString("title", "Scrollback"));
+                notif.setText(extras.getString("text", "There is new activity"));
                 notif.setPath("/"+extras.getString("path", "me"));
 
                 // Post notification of received message if application isn't open
-
-                if(!Scrollback.appOpen)
+                if (!Scrollback.appOpen)
                     sendNotification(notif);
             }
         }
@@ -89,9 +84,8 @@ public class GcmIntentService extends IntentService {
                 new NotificationCompat.Builder(this)
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setContentTitle(n.getTitle())
-                        .setStyle(new NotificationCompat.BigTextStyle()
-                                .bigText(n.getMessage()))
-                        .setContentText(n.getMessage())
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(n.getText()))
+                        .setContentText(n.getText())
                         .setAutoCancel(true);
 
         mBuilder.setContentIntent(contentIntent);
