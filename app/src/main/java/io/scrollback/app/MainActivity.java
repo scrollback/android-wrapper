@@ -373,7 +373,7 @@ public class MainActivity extends ActionBarActivity {
                 //Show Progress Dialog
                 dialog = new ProgressDialog(MainActivity.this);
 
-                dialog.setMessage("Logging into Facebook..");
+                dialog.setMessage("Signing in using Facebook...");
                 dialog.show();
 
                 Request.newMeRequest(session, new Request.GraphUserCallback() {
@@ -419,7 +419,7 @@ public class MainActivity extends ActionBarActivity {
         protected void onPreExecute() {
             super.onPreExecute();
             dialog = new ProgressDialog(MainActivity.this);
-            dialog.setMessage("Logging into Google..");
+            dialog.setMessage("Signing in using Google...");
             dialog.show();
         }
 
