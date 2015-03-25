@@ -24,6 +24,7 @@ import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.facebook.AppEventsLogger;
 import com.facebook.Request;
 import com.facebook.Response;
 import com.facebook.Session;
@@ -300,6 +301,22 @@ public class MainActivity extends ActionBarActivity {
     };
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Logs 'install' and 'app activate' App Events.
+        AppEventsLogger.activateApp(this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Logs 'app deactivate' App Event.
+        AppEventsLogger.deactivateApp(this);
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         Session.saveSession(Session.getActiveSession(), outState);
@@ -355,8 +372,10 @@ public class MainActivity extends ActionBarActivity {
                 session.getAccessToken();
                 //Show Progress Dialog
                 dialog = new ProgressDialog(MainActivity.this);
+
                 dialog.setMessage("Logging into Facebook..");
                 dialog.show();
+
                 Request.newMeRequest(session, new Request.GraphUserCallback() {
                     @Override
                     public void onCompleted(GraphUser user, Response response) {
