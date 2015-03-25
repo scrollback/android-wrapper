@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -64,6 +65,11 @@ public class MainActivity extends ActionBarActivity {
 
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
+    private final static int FB_REQUEST_CODE_OPEN = 14141;
+
+    private final static int FB_REQUEST_CODE_PERM = 14142;
+
+
     private String accountName;
     private String accessToken;
 
@@ -80,7 +86,7 @@ public class MainActivity extends ActionBarActivity {
     ArrayList<String> permissions;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
@@ -151,21 +157,16 @@ public class MainActivity extends ActionBarActivity {
                 @JavascriptInterface
                 public void facebookLogin() {
 
-                    permissions = new ArrayList<String>();
-                    permissions.add("email");
+                    // Get a handler that can be used to post to the main thread
+                    Handler mainHandler = new Handler(MainActivity.this.getMainLooper());
 
-                    Session session = Session.getActiveSession();
-
-                    if (session == null)
-                        session = new Session(MainActivity.this);
-
-                    if (!session.isOpened()) {
-                        session.openForRead(new Session.OpenRequest(MainActivity.this).setCallback(statusCallback).setPermissions(permissions));
-                    } else {
-                        Session.openActiveSession(MainActivity.this, true, statusCallback);
-                    }
-
-
+                    Runnable myRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            doFacebookLogin();
+                        }
+                    };
+                    mainHandler.post(myRunnable);
                 }
 
                 @JavascriptInterface
@@ -183,7 +184,6 @@ public class MainActivity extends ActionBarActivity {
             }, "Android");
 
             if(getIntent().hasExtra("scrollback_path")) {
-                Log.d("MainActivity got path", INDEX + getIntent().getStringExtra("scrollback_path"));
                 mWebView.loadUrl(INDEX + getIntent().getStringExtra("scrollback_path"));
             }
             else
@@ -197,6 +197,31 @@ public class MainActivity extends ActionBarActivity {
             });
 
             showLoading();
+
+            Session session = Session.getActiveSession();
+            if(session == null) {
+                if(savedInstanceState != null) {
+                    session = Session.restoreSession(this, null, statusCallback, savedInstanceState);
+                }
+                if(session == null) {
+                    session = new Session(this);
+                }
+                Session.setActiveSession(session);
+                session.addCallback(statusCallback);
+                if(session.getState().equals(SessionState.CREATED_TOKEN_LOADED)) {
+                    session.openForRead(new Session.OpenRequest(this).setCallback(statusCallback).setPermissions(permissions));
+                }
+            }
+        }
+    }
+
+    void doFacebookLogin() {
+        Session session = Session.getActiveSession();
+
+        if(!session.isOpened()) {
+            session.openForRead(new Session.OpenRequest(MainActivity.this).setCallback(statusCallback).setPermissions(permissions).setRequestCode(FB_REQUEST_CODE_OPEN));
+        } else {
+            Session.openActiveSession(MainActivity.this, true, statusCallback);
         }
     }
 
@@ -216,15 +241,18 @@ public class MainActivity extends ActionBarActivity {
     }
 
     void emitGoogleLoginEvent(String token) {
+        Log.d("emitGoogleLoginEvent", "email:"+accountName+" token:"+token);
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'google', 'email': '" + accountName + "', 'token': '" + token + "'} }))");
     }
 
     void emitFacebookLoginEvent(String email, String token) {
+        Log.d("emitFacebookLoginEvent", "email:"+email+" token:"+token);
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'facebook', 'email': '" + email + "', 'token': '" + token + "'} }))");
 
     }
 
     void emitGCMRegisterEvent(String regid, String uuid, String model) {
+        Log.d("emitGCMRegisterEvent", "uuid:"+uuid+" regid:"+regid);
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '" + regid + "', 'uuid': '" + uuid + "', 'model': '" + model + "'} }))");
 
     }
@@ -274,24 +302,10 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        Session session = Session.getActiveSession();
-        Session.saveSession(session, outState);
+        Session.saveSession(Session.getActiveSession(), outState);
         mWebView.saveState(outState);
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (Session.getActiveSession() != null)
-            Session.getActiveSession().addCallback(statusCallback);
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (Session.getActiveSession() != null)
-            Session.getActiveSession().removeCallback(statusCallback);
-    }
 
     @Override
     protected void onDestroy() {
@@ -301,31 +315,40 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-        if (Session.getActiveSession() != null)
-            Session.getActiveSession().onActivityResult(MainActivity.this, requestCode, resultCode, data);
-
+        super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
             accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
 
             new RetrieveGoogleTokenTask().execute(accountName);
         }
 
-        if (requestCode == REQ_SIGN_IN_REQUIRED && resultCode == RESULT_OK) {
+        else if (requestCode == REQ_SIGN_IN_REQUIRED && resultCode == RESULT_OK) {
             // We had to sign in - now we can finish off the token request.
             new RetrieveGoogleTokenTask().execute(accountName);
+        }
+
+        else if (requestCode == FB_REQUEST_CODE_PERM || requestCode == FB_REQUEST_CODE_OPEN) {
+            if (Session.getActiveSession() != null) {
+                Session.getActiveSession().onActivityResult(MainActivity.this, requestCode, resultCode, data);
+
+            }
+
         }
     }
 
     Session.StatusCallback statusCallback = new Session.StatusCallback() {
         @Override
         public void call(Session session, SessionState state, Exception exception) {
+
+            Log.d("SessionState", state.toString());
             processSessionStatus(session, state, exception);
         }
     };
 
     public void processSessionStatus(final Session session, SessionState state, Exception exception) {
-
+        if(exception!=null)
+            Log.d("FBException", exception.getMessage());
+        Log.d("processSessionState", "State: "+state.toString());
         if (session != null && session.isOpened()) {
 
             if (session.getPermissions().contains("email")) {
@@ -365,7 +388,7 @@ public class MainActivity extends ActionBarActivity {
                 }).executeAsync();
 
             } else {
-                session.requestNewReadPermissions(new Session.NewPermissionsRequest(MainActivity.this, permissions));
+                session.requestNewReadPermissions(new Session.NewPermissionsRequest(this, permissions).setRequestCode(FB_REQUEST_CODE_PERM));
             }
         }
     }
