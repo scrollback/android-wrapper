@@ -58,7 +58,7 @@ public class MainActivity extends ActionBarActivity {
     public static final String PROPERTY_REG_ID = "registration_id";
     private static final String PROPERTY_APP_VERSION = "appVersion";
 
-    String SENDER_ID = "73969137499";
+    private static final String GCM_SENDER_ID = "73969137499";
 
     private static final int REQ_SIGN_IN_REQUIRED = 55664;
 
@@ -184,11 +184,19 @@ public class MainActivity extends ActionBarActivity {
                 }
             }, "Android");
 
-            if(getIntent().hasExtra("scrollback_path")) {
+            Intent intent = getIntent();
+            String action = intent.getAction();
+            Uri uri = intent.getData();
+
+            if (intent.hasExtra("scrollback_path")) {
                 mWebView.loadUrl(INDEX + getIntent().getStringExtra("scrollback_path"));
+            } else if (Intent.ACTION_VIEW.equals(action) && uri != null) {
+                final String URL = uri.toString();
+
+                mWebView.loadUrl(URL);
+            } else {
+                mWebView.loadUrl(INDEX + PATH_ME);
             }
-            else
-                mWebView.loadUrl(INDEX+PATH_ME);
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
 
@@ -512,7 +520,7 @@ public class MainActivity extends ActionBarActivity {
                     if (gcm == null) {
                         gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
                     }
-                    regid = gcm.register(SENDER_ID);
+                    regid = gcm.register(GCM_SENDER_ID);
                     msg = "Device registered, registration id=" + regid;
 
                     // You should send the registration ID to your server over HTTP, so it
