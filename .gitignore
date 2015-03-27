@@ -34,3 +34,7 @@ proguard/
 
 # Log Files
 *.log
+
+* Reports
+manifest-merger-debug-report.text
+manifest-merger-release-report.text
