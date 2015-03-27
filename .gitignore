@@ -1,3 +1,13 @@
+*~
+.DS_Store
+
+# Keystore files
+*.keystore
+*.jks
+
+# IDE files
+.idea
+
 # Built application files
 *.apk
 *.ap_
@@ -24,3 +34,7 @@ proguard/
 
 # Log Files
 *.log
+
+* Reports
+manifest-merger-debug-report.text
+manifest-merger-release-report.text
