@@ -142,6 +142,22 @@ public class MainActivity extends ActionBarActivity {
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
                 @JavascriptInterface
+                public void setStatusBarColor() {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                try {
+                                    getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
+                                } catch (Exception e) {
+                                    Log.d("Cannot reset statusbar color", e.getMessage());
+                                }
+                            }
+                        }
+                    });
+                }
+
+                @JavascriptInterface
                 public void setStatusBarColor(final String color) {
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
