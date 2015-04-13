@@ -18,8 +18,6 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -54,7 +52,7 @@ public class MainActivity extends ActionBarActivity {
 
     public static final String DOMAIN = "stage.scrollback.io";
     public static final String INDEX = "https://" + DOMAIN;
-    public static final String PATH_ME = "/me";
+    public static final String HOME = INDEX + "/me";
 
     private static final String TAG = "android-wrapper";
 
@@ -230,7 +228,7 @@ public class MainActivity extends ActionBarActivity {
 
                 mWebView.loadUrl(URL);
             } else {
-                mWebView.loadUrl(INDEX + PATH_ME);
+                mWebView.loadUrl(HOME);
             }
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
@@ -309,13 +307,19 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // Check if the key event was the Back button and if there's history
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {
-            mWebView.goBack();
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // Check if the key event was the Back button and if there's history
+            if (mWebView.getUrl().equals(HOME) || !mWebView.canGoBack()) {
+                finish();
+            } else if (mWebView.canGoBack()) {
+                mWebView.goBack();
+            }
+
             return true;
         }
-        // If it wasn't the Back key or there's no web page history, bubble up to the default
-        // system behavior (probably exit the activity)
+
+        // Bubble up to the default system behavior (probably exit the activity)
         return super.onKeyDown(keyCode, event);
     }
 
