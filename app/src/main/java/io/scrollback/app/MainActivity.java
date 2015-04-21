@@ -18,6 +18,7 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -300,11 +301,6 @@ public class MainActivity extends ActionBarActivity {
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_unregister', { detail :{'uuid': '" + uuid + "'} }))");
     }
 
-    void setWebViewText(String m) {
-        mWebView.loadUrl("javascript:textEcho('" + m + "');");
-        /* javascript:window.dispatchEvent(new CustomEvent('login', {provider: 'google', token: ''}))  */
-    }
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
 
@@ -324,6 +320,14 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private WebViewClient mWebViewClient = new WebViewClient() {
+
+        public boolean onConsoleMessage(ConsoleMessage cm) {
+            Log.d(getString(R.string.app_name), cm.message() + " -- From line "
+                    + cm.lineNumber() + " of "
+                    + cm.sourceId() );
+
+            return true;
+        }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
