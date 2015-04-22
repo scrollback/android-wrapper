@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -17,6 +18,7 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -51,7 +53,7 @@ public class MainActivity extends ActionBarActivity {
 
     public static final String DOMAIN = "stage.scrollback.io";
     public static final String INDEX = "https://" + DOMAIN;
-    public static final String PATH_ME = "/me";
+    public static final String HOME = INDEX + "/me";
 
     private static final String TAG = "android-wrapper";
 
@@ -136,7 +138,46 @@ public class MainActivity extends ActionBarActivity {
             mWebSettings.setAllowFileAccess(true);
             mWebSettings.setCacheMode(LOAD_DEFAULT);
 
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                String databasePath = getApplicationContext().getDir("databases", Context.MODE_PRIVATE).getPath();
+
+                mWebSettings.setDatabaseEnabled(true);
+                mWebSettings.setDatabasePath(databasePath);
+            }
+
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
+
+                @JavascriptInterface
+                public void setStatusBarColor() {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                try {
+                                    getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
+                                } catch (Exception e) {
+                                    Log.d("Cannot reset statusbar color", e.getMessage());
+                                }
+                            }
+                        }
+                    });
+                }
+
+                @JavascriptInterface
+                public void setStatusBarColor(final String color) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                try {
+                                    getWindow().setStatusBarColor(Color.parseColor(color));
+                                } catch (Exception e) {
+                                    Log.d("Cannot set statusbar color to " + color, e.getMessage());
+                                }
+                            }
+                        }
+                    });
+                }
 
                 @JavascriptInterface
                 public void onFinishedLoading() {
@@ -195,7 +236,7 @@ public class MainActivity extends ActionBarActivity {
 
                 mWebView.loadUrl(URL);
             } else {
-                mWebView.loadUrl(INDEX + PATH_ME);
+                mWebView.loadUrl(HOME);
             }
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
@@ -267,24 +308,33 @@ public class MainActivity extends ActionBarActivity {
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_unregister', { detail :{'uuid': '" + uuid + "'} }))");
     }
 
-    void setWebViewText(String m) {
-        mWebView.loadUrl("javascript:textEcho('" + m + "');");
-        /* javascript:window.dispatchEvent(new CustomEvent('login', {provider: 'google', token: ''}))  */
-    }
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // Check if the key event was the Back button and if there's history
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {
-            mWebView.goBack();
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // Check if the key event was the Back button and if there's history
+            if (mWebView.getUrl().equals(HOME) || !mWebView.canGoBack()) {
+                finish();
+            } else if (mWebView.canGoBack()) {
+                mWebView.goBack();
+            }
+
             return true;
         }
-        // If it wasn't the Back key or there's no web page history, bubble up to the default
-        // system behavior (probably exit the activity)
+
+        // Bubble up to the default system behavior (probably exit the activity)
         return super.onKeyDown(keyCode, event);
     }
 
     private WebViewClient mWebViewClient = new WebViewClient() {
+
+        public boolean onConsoleMessage(ConsoleMessage cm) {
+            Log.d(getString(R.string.app_name), cm.message() + " -- From line "
+                    + cm.lineNumber() + " of "
+                    + cm.sourceId() );
+
+            return true;
+        }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
