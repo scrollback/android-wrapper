@@ -138,6 +138,13 @@ public class MainActivity extends ActionBarActivity {
             mWebSettings.setAllowFileAccess(true);
             mWebSettings.setCacheMode(LOAD_DEFAULT);
 
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                String databasePath = getApplicationContext().getDir("databases", Context.MODE_PRIVATE).getPath();
+
+                mWebSettings.setDatabaseEnabled(true);
+                mWebSettings.setDatabasePath(databasePath);
+            }
+
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
                 @JavascriptInterface
