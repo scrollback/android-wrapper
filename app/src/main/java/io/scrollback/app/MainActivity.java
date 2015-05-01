@@ -14,7 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
-import android.support.v7.app.ActionBarActivity;
+import android.app.Activity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -49,10 +49,10 @@ import java.util.Map;
 import static android.webkit.WebSettings.LOAD_DEFAULT;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends Activity {
 
-    public static final String DOMAIN = "stage.scrollback.io";
-    public static final String INDEX = "https://" + DOMAIN;
+    public static final String ORIGIN = Constants.domain;
+    public static final String INDEX = Constants.protocol + "//" + ORIGIN;
     public static final String HOME = INDEX + "/me";
 
     private static final String TAG = "android-wrapper";
@@ -156,7 +156,7 @@ public class MainActivity extends ActionBarActivity {
                                 try {
                                     getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
                                 } catch (Exception e) {
-                                    Log.d("Cannot reset statusbar color", e.getMessage());
+                                    Log.d(TAG, "ERR_STATUS_COLOR " + e);
                                 }
                             }
                         }
@@ -172,7 +172,7 @@ public class MainActivity extends ActionBarActivity {
                                 try {
                                     getWindow().setStatusBarColor(Color.parseColor(color));
                                 } catch (Exception e) {
-                                    Log.d("Cannot set statusbar color to " + color, e.getMessage());
+                                    Log.d(TAG, "ERR_STATUS_COLOR " + color + " " + e);
                                 }
                             }
                         }
@@ -301,7 +301,6 @@ public class MainActivity extends ActionBarActivity {
     void emitGCMRegisterEvent(String regid, String uuid, String model) {
         Log.d("emitGCMRegisterEvent", "uuid:"+uuid+" regid:"+regid);
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '" + regid + "', 'uuid': '" + uuid + "', 'model': '" + model + "'} }))");
-
     }
 
     void emitGCMUnregisterEvent(String uuid) {
@@ -340,12 +339,13 @@ public class MainActivity extends ActionBarActivity {
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             Uri uri = Uri.parse(url);
 
-            if (uri.getHost().equals(DOMAIN)) {
+            if (uri.getAuthority().equals(ORIGIN)) {
                 // This is my web site, so do not override; let my WebView load the page
                 return false;
 
 
             } else {
+                Log.d(TAG, uri.getAuthority() + " is not " + ORIGIN);
                 // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(intent);
@@ -666,7 +666,7 @@ public class MainActivity extends ActionBarActivity {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(PROPERTY_REG_ID, regId);
         editor.putInt(PROPERTY_APP_VERSION, appVersion);
-        editor.commit();
+        editor.apply();
     }
 
     /**

@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 21
     buildToolsVersion "21.1.2"
+
     defaultConfig {
         applicationId "io.scrollback.app"
         minSdkVersion 14
@@ -10,13 +11,16 @@ android {
         versionCode 136
         versionName "1.0"
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
+    buildTypes {}
     productFlavors {
+        production {
+        }
+        staging {
+            applicationId "io.scrollback.app.staging"
+        }
+        development {
+            applicationId "io.scrollback.app.development"
+        }
     }
 }
 
