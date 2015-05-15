@@ -2,6 +2,8 @@ package io.scrollback.app;
 
 import android.accounts.AccountManager;
 import android.app.ProgressDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -33,6 +35,7 @@ import com.facebook.Session;
 import com.facebook.SessionState;
 import com.facebook.model.GraphObject;
 import com.facebook.model.GraphUser;
+
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
@@ -177,6 +180,27 @@ public class MainActivity extends ActionBarActivity {
                             }
                         }
                     });
+                }
+
+                @JavascriptInterface
+                public void shareItem(String title, String content) {
+                    Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+
+                    sharingIntent.setType("text/plain");
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, content);
+
+                    startActivity(Intent.createChooser(sharingIntent, title));
+                }
+
+                @JavascriptInterface
+                public void copyToClipboard(String label, String text) {
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    ClipData clip = ClipData.newPlainText(label, text);
+
+                    clipboard.setPrimaryClip(clip);
+
+                    Toast toast = Toast.makeText(MainActivity.this, getString(R.string.clipboard_success), Toast.LENGTH_SHORT);
+                    toast.show();
                 }
 
                 @JavascriptInterface
