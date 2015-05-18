@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
                                 try {
                                     getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
                                 } catch (Exception e) {
-                                    Log.d(TAG, "Failed to state statusbar color " + e);
+                                    Log.d(TAG, "Failed to set statusbar color " + e);
                                 }
                             }
                         }
@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
                                 try {
                                     getWindow().setStatusBarColor(Color.parseColor(color));
                                 } catch (Exception e) {
-                                    Log.d(TAG, "Failed to state statusbar color to " + color + " " + e);
+                                    Log.d(TAG, "Failed to set statusbar color to " + color + " " + e);
                                 }
                             }
                         }
