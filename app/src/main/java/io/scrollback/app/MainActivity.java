@@ -26,6 +26,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.facebook.AppEventsLogger;
@@ -82,6 +83,7 @@ public class MainActivity extends Activity {
 
     private WebView mWebView;
     private ProgressBar mProgressBar;
+    private TextView mLoadError;
 
     private boolean inProgress = false;
 
@@ -98,6 +100,7 @@ public class MainActivity extends Activity {
         mWebView = (WebView) findViewById(R.id.main_webview);
 
         mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
+        mLoadError = (TextView) findViewById(R.id.main_loaderror);
 
         // Enable debugging in webview
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -259,17 +262,27 @@ public class MainActivity extends Activity {
             }
 
             mWebView.setOnLongClickListener(new View.OnLongClickListener() {
-
                 public boolean onLongClick(View v) {
                     return true;
+                }
+            });
+
+            mLoadError.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    mWebView.loadUrl(mWebView.getUrl());
+
+                    mLoadError.setVisibility(View.GONE);
+
+                    showLoading();
                 }
             });
 
             showLoading();
 
             Session session = Session.getActiveSession();
-            if(session == null) {
-                if(savedInstanceState != null) {
+
+            if (session == null) {
+                if (savedInstanceState != null) {
                     session = Session.restoreSession(this, null, statusCallback, savedInstanceState);
                 }
 
@@ -294,13 +307,13 @@ public class MainActivity extends Activity {
     }
 
     void hideLoading() {
-        mProgressBar.setVisibility(View.INVISIBLE);
+        mProgressBar.setVisibility(View.GONE);
         mWebView.setVisibility(View.VISIBLE);
     }
 
     void showLoading() {
         mProgressBar.setVisibility(View.VISIBLE);
-        mWebView.setVisibility(View.INVISIBLE);
+        mWebView.setVisibility(View.GONE);
     }
 
     void emitGoogleLoginEvent(String token) {
@@ -368,10 +381,16 @@ public class MainActivity extends Activity {
                 // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(intent);
+
                 return true;
             }
         }
 
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            mLoadError.setVisibility(View.VISIBLE);
+            mProgressBar.setVisibility(View.GONE);
+        }
     };
 
     @Override

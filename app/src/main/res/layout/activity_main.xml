@@ -5,6 +5,15 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <TextView
+        android:id="@+id/main_loaderror"
+        android:text="@string/load_fail_error"
+        android:textSize="18sp"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
     <ProgressBar
         android:id="@+id/main_pgbar"
         android:layout_centerInParent="true"
