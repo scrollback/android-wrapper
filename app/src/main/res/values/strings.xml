@@ -5,7 +5,7 @@
     <string name="app_host">scrollback.io</string>
     <string name="google_signing_in">Signing in with Google…</string>
     <string name="fb_signing_in">Signing in with Facebook…</string>
-    <string name="requesting_permission">Unauthorized. Requesting permission…</string>
+    <string name="requesting_permission">Requesting permission…</string>
     <string name="signed_in">Signed in</string>
     <string name="fb_app_id">1389363534614084</string>
     <string name="gcm_sender_id">73969137499</string>
