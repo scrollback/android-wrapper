@@ -5,6 +5,16 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <TextView
+        android:id="@+id/main_loaderror"
+        android:text="@string/load_fail_error"
+        android:textSize="18sp"
+        android:lineSpacingMultiplier="1.625"
+        android:gravity="center"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:visibility="gone" />
+
     <ProgressBar
         android:id="@+id/main_pgbar"
         android:layout_centerInParent="true"

@@ -26,6 +26,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.facebook.AppEventsLogger;
@@ -56,14 +57,11 @@ public class MainActivity extends Activity {
 
     public static final String ORIGIN = Constants.domain;
     public static final String INDEX = Constants.protocol + "//" + ORIGIN;
-    public static final String HOME = INDEX + "/me";
 
-    private static final String TAG = "android-wrapper";
+    public static final String HOME = INDEX + "/me";
 
     public static final String PROPERTY_REG_ID = "registration_id";
     private static final String PROPERTY_APP_VERSION = "appVersion";
-
-    private static final String GCM_SENDER_ID = "73969137499";
 
     private static final int REQ_SIGN_IN_REQUIRED = 55664;
 
@@ -75,6 +73,7 @@ public class MainActivity extends Activity {
 
     private final static int FB_REQUEST_CODE_PERM = 14142;
 
+    private static final String TAG = "android_wrapper";
 
     private String accountName;
     private String accessToken;
@@ -84,6 +83,7 @@ public class MainActivity extends Activity {
 
     private WebView mWebView;
     private ProgressBar mProgressBar;
+    private TextView mLoadError;
 
     private boolean inProgress = false;
 
@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
         mWebView = (WebView) findViewById(R.id.main_webview);
 
         mProgressBar = (ProgressBar) findViewById(R.id.main_pgbar);
+        mLoadError = (TextView) findViewById(R.id.main_loaderror);
 
         // Enable debugging in webview
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -109,7 +110,7 @@ public class MainActivity extends Activity {
         }
 
         // Check device for Play Services APK. If check succeeds, proceed with
-        //  GCM registration.
+        // GCM registration.
         if (checkPlayServices()) {
             gcm = GoogleCloudMessaging.getInstance(this);
             regid = getRegistrationId(getApplicationContext());
@@ -159,7 +160,7 @@ public class MainActivity extends Activity {
                                 try {
                                     getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
                                 } catch (Exception e) {
-                                    Log.d(TAG, "ERR_STATUS_COLOR " + e);
+                                    Log.d(TAG, "Failed to set statusbar color " + e);
                                 }
                             }
                         }
@@ -175,7 +176,7 @@ public class MainActivity extends Activity {
                                 try {
                                     getWindow().setStatusBarColor(Color.parseColor(color));
                                 } catch (Exception e) {
-                                    Log.d(TAG, "ERR_STATUS_COLOR " + color + " " + e);
+                                    Log.d(TAG, "Failed to set statusbar color to " + color + " " + e);
                                 }
                             }
                         }
@@ -222,7 +223,6 @@ public class MainActivity extends Activity {
 
                 @JavascriptInterface
                 public void facebookLogin() {
-
                     // Get a handler that can be used to post to the main thread
                     Handler mainHandler = new Handler(MainActivity.this.getMainLooper());
 
@@ -238,12 +238,10 @@ public class MainActivity extends Activity {
                 @JavascriptInterface
                 public void registerGCM() {
                     registerBackground();
-
                 }
 
                 @JavascriptInterface
                 public void unregisterGCM() {
-
                     unRegisterBackground();
 
                 }
@@ -263,23 +261,29 @@ public class MainActivity extends Activity {
                 mWebView.loadUrl(HOME);
             }
 
-            mWebView.setOnLongClickListener(new View.OnLongClickListener() {
+            mLoadError.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    mWebView.loadUrl(mWebView.getUrl());
 
-                public boolean onLongClick(View v) {
-                    return true;
+                    mLoadError.setVisibility(View.GONE);
+
+                    showLoading();
                 }
             });
 
             showLoading();
 
             Session session = Session.getActiveSession();
-            if(session == null) {
-                if(savedInstanceState != null) {
+
+            if (session == null) {
+                if (savedInstanceState != null) {
                     session = Session.restoreSession(this, null, statusCallback, savedInstanceState);
                 }
+
                 if(session == null) {
                     session = new Session(this);
                 }
+
                 Session.setActiveSession(session);
                 session.addCallback(statusCallback);
             }
@@ -297,33 +301,31 @@ public class MainActivity extends Activity {
     }
 
     void hideLoading() {
-        mProgressBar.setVisibility(View.INVISIBLE);
+        mProgressBar.setVisibility(View.GONE);
         mWebView.setVisibility(View.VISIBLE);
     }
 
     void showLoading() {
-
-//        mLoading = (LinearLayout)findViewById(R.id.main_activity_progress);
-//        final Animation animationFadeIn = AnimationUtils.loadAnimation(this, R.anim.fadein);
-//        mLoading.setAnimation(animationFadeIn);
-
         mProgressBar.setVisibility(View.VISIBLE);
-        mWebView.setVisibility(View.INVISIBLE);
+        mWebView.setVisibility(View.GONE);
     }
 
     void emitGoogleLoginEvent(String token) {
         Log.d("emitGoogleLoginEvent", "email:"+accountName+" token:"+token);
+
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'google', 'email': '" + accountName + "', 'token': '" + token + "'} }))");
     }
 
     void emitFacebookLoginEvent(String email, String token) {
         Log.d("emitFacebookLoginEvent", "email:"+email+" token:"+token);
+
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('login', { detail :{'provider': 'facebook', 'email': '" + email + "', 'token': '" + token + "'} }))");
 
     }
 
     void emitGCMRegisterEvent(String regid, String uuid, String model) {
         Log.d("emitGCMRegisterEvent", "uuid:"+uuid+" regid:"+regid);
+
         mWebView.loadUrl("javascript:window.dispatchEvent(new CustomEvent('gcm_register', { detail :{'regId': '" + regid + "', 'uuid': '" + uuid + "', 'model': '" + model + "'} }))");
     }
 
@@ -333,7 +335,6 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             // Check if the key event was the Back button and if there's history
             if (mWebView.getUrl().equals(HOME) || !mWebView.canGoBack()) {
@@ -370,13 +371,20 @@ public class MainActivity extends Activity {
 
             } else {
                 Log.d(TAG, uri.getAuthority() + " is not " + ORIGIN);
+
                 // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(intent);
+
                 return true;
             }
         }
 
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            mLoadError.setVisibility(View.VISIBLE);
+            mProgressBar.setVisibility(View.GONE);
+        }
     };
 
     @Override
@@ -399,6 +407,7 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         Session.saveSession(Session.getActiveSession(), outState);
+
         mWebView.saveState(outState);
     }
 
@@ -406,6 +415,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
         mWebView.destroy();
     }
 
@@ -442,17 +452,20 @@ public class MainActivity extends Activity {
     };
 
     public void processSessionStatus(final Session session, SessionState state, Exception exception) {
-        if(exception!=null)
+        if (exception!=null) {
             Log.d("FBException", exception.getMessage());
-        Log.d("processSessionState", "State: "+state.toString());
-        if (session != null && session.isOpened()) {
+        }
 
+        Log.d("processSessionState", "State: " + state.toString());
+
+        if (session != null && session.isOpened()) {
             if (session.getPermissions().contains("email")) {
                 session.getAccessToken();
+
                 //Show Progress Dialog
                 dialog = new ProgressDialog(MainActivity.this);
 
-                dialog.setMessage("Signing in using Facebook...");
+                dialog.setMessage(getString(R.string.fb_signing_in));
                 dialog.show();
 
                 Request.newMeRequest(session, new Request.GraphUserCallback() {
@@ -462,21 +475,25 @@ public class MainActivity extends Activity {
                         if (dialog != null && dialog.isShowing()) {
                             dialog.dismiss();
                         }
+
                         if (user != null) {
                             Map<String, Object> responseMap = new HashMap<String, Object>();
                             GraphObject graphObject = response.getGraphObject();
                             responseMap = graphObject.asMap();
+
                             Log.i("FbLogin", "Response Map KeySet - " + responseMap.keySet());
 
                             String fb_id = user.getId();
                             String email = null;
                             String name = (String) responseMap.get("name");
+
                             if (responseMap.get("email") != null) {
                                 email = responseMap.get("email").toString();
                                 emitFacebookLoginEvent(email, session.getAccessToken());
                             } else {
-                                //Clear all session info & ask user to login again
+                                // Clear all session info & ask user to login again
                                 Session session = Session.getActiveSession();
+
                                 if (session != null) {
                                     session.closeAndClearTokenInformation();
                                 }
@@ -498,7 +515,7 @@ public class MainActivity extends Activity {
         protected void onPreExecute() {
             super.onPreExecute();
             dialog = new ProgressDialog(MainActivity.this);
-            dialog.setMessage("Signing in using Google...");
+            dialog.setMessage(getString(R.string.google_signing_in));
             dialog.show();
         }
 
@@ -507,6 +524,7 @@ public class MainActivity extends Activity {
             String accountName = params[0];
             String scopes = "oauth2:profile email";
             String token = null;
+
             try {
                 token = GoogleAuthUtil.getToken(getApplicationContext(), accountName, scopes);
             } catch (IOException e) {
@@ -516,20 +534,25 @@ public class MainActivity extends Activity {
             } catch (GoogleAuthException e) {
                 Log.e(TAG, e.getMessage());
             }
+
             return token;
         }
 
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
+
             if (dialog != null && dialog.isShowing()) {
                 dialog.dismiss();
             }
-            if (s == null)
-                Toast.makeText(MainActivity.this, "Unauthorized. Requesting permission", Toast.LENGTH_SHORT).show();
-            else {
-                Toast.makeText(MainActivity.this, "Signed in", Toast.LENGTH_SHORT).show();
+
+            if (s == null) {
+                Toast.makeText(MainActivity.this, getString(R.string.requesting_permission), Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(MainActivity.this, getString(R.string.signed_in), Toast.LENGTH_SHORT).show();
+
                 emitGoogleLoginEvent(s);
+
                 accessToken = s;
             }
         }
@@ -540,13 +563,16 @@ public class MainActivity extends Activity {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+
             inProgress = true;
         }
 
         @Override
         protected String doInBackground(String... params) {
-            String accessToken = params[0];
+            accessToken = params[0];
+
             String result = null;
+
             try {
                 GoogleAuthUtil.clearToken(getApplicationContext(), accessToken);
                 result = "true";
@@ -555,13 +581,14 @@ public class MainActivity extends Activity {
             } catch (GoogleAuthException e) {
                 Log.e(TAG, e.getMessage());
             }
+
             return result;
         }
 
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
-            Toast.makeText(MainActivity.this, "Cleared", Toast.LENGTH_SHORT).show();
+
             inProgress = false;
 
         }
@@ -579,19 +606,19 @@ public class MainActivity extends Activity {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-//                dialog = new ProgressDialog(MainActivity.this);
-//                dialog.setMessage("Registering with Google..");
-//                dialog.show();
             }
 
             @Override
             protected String doInBackground(Void... params) {
                 String msg = "";
+
                 try {
                     if (gcm == null) {
                         gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
                     }
-                    regid = gcm.register(GCM_SENDER_ID);
+
+                    regid = gcm.register(getString(R.string.gcm_sender_id));
+
                     msg = "Device registered, registration id=" + regid;
 
                     // You should send the registration ID to your server over HTTP, so it
@@ -606,6 +633,7 @@ public class MainActivity extends Activity {
                 } catch (IOException ex) {
                     msg = "Error :" + ex.getMessage();
                 }
+
                 return msg;
             }
 
@@ -615,7 +643,6 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                 }
 
-//                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
                 String uuid = Settings.Secure.getString(getApplicationContext().getContentResolver(),
                         Settings.Secure.ANDROID_ID);
                 emitGCMRegisterEvent(regid, uuid, Build.MODEL);
@@ -630,18 +657,17 @@ public class MainActivity extends Activity {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-//                dialog = new ProgressDialog(MainActivity.this);
-//                dialog.setMessage("Registering with Google..");
-//                dialog.show();
             }
 
             @Override
             protected String doInBackground(Void... params) {
                 String msg = "";
+
                 try {
                     if (gcm == null) {
                         gcm = GoogleCloudMessaging.getInstance(getApplicationContext());
                     }
+
                     gcm.unregister();
 
                     // You should send the registration ID to your server over HTTP, so it
@@ -656,6 +682,7 @@ public class MainActivity extends Activity {
                 } catch (IOException ex) {
                     msg = "Error :" + ex.getMessage();
                 }
+
                 return msg;
             }
 
@@ -665,14 +692,10 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                 }
 
-//                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
-                String uuid = Settings.Secure.getString(getApplicationContext().getContentResolver(),
-                        Settings.Secure.ANDROID_ID);
                 emitGCMUnregisterEvent(Build.MODEL);
             }
         }.execute(null, null, null);
     }
-
 
 
 
@@ -686,8 +709,11 @@ public class MainActivity extends Activity {
     private void setRegistrationId(Context context, String regId) {
         final SharedPreferences prefs = getGCMPreferences(context);
         int appVersion = getAppVersion(context);
+
         Log.v(TAG, "Saving regId on app version " + appVersion);
+
         SharedPreferences.Editor editor = prefs.edit();
+
         editor.putString(PROPERTY_REG_ID, regId);
         editor.putInt(PROPERTY_APP_VERSION, appVersion);
         editor.apply();
@@ -704,18 +730,23 @@ public class MainActivity extends Activity {
     private String getRegistrationId(Context context) {
         final SharedPreferences prefs = getGCMPreferences(context);
         String registrationId = prefs.getString(PROPERTY_REG_ID, "");
+
         if (registrationId.length() == 0) {
             Log.v(TAG, "Registration not found.");
             return "";
         }
+
         // check if app was updated; if so, it must clear registration id to
         // avoid a race condition if GCM sends a message
         int registeredVersion = prefs.getInt(PROPERTY_APP_VERSION, Integer.MIN_VALUE);
         int currentVersion = getAppVersion(context);
+
         if (registeredVersion != currentVersion) {
             Log.v(TAG, "App version changed or registration expired.");
+
             return "";
         }
+
         return registrationId;
     }
 
@@ -726,9 +757,10 @@ public class MainActivity extends Activity {
         try {
             PackageInfo packageInfo = context.getPackageManager()
                     .getPackageInfo(context.getPackageName(), 0);
+
             return packageInfo.versionCode;
         } catch (PackageManager.NameNotFoundException e) {
-            // should never happen
+            // Should never happen
             throw new RuntimeException("Could not get package name: " + e);
         }
     }
@@ -747,16 +779,20 @@ public class MainActivity extends Activity {
      */
     private boolean checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+
         if (resultCode != ConnectionResult.SUCCESS) {
             if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
                 GooglePlayServicesUtil.getErrorDialog(resultCode, this,
                         PLAY_SERVICES_RESOLUTION_REQUEST).show();
             } else {
                 Log.i(TAG, "This device is not supported.");
+
                 finish();
             }
+
             return false;
         }
+
         return true;
     }
 }
