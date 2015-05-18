@@ -6,5 +6,7 @@
     <string name="app_host_debug">stage.scrollback.io</string>
     <string name="fb_app_id">1389363534614084</string>
     <string name="gcm_sender_id">73969137499</string>
+    <string name="clipboard_success">Copied to cipboard!</string>
+
 
 </resources>
