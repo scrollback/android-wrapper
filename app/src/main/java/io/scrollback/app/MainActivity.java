@@ -261,12 +261,6 @@ public class MainActivity extends Activity {
                 mWebView.loadUrl(HOME);
             }
 
-            mWebView.setOnLongClickListener(new View.OnLongClickListener() {
-                public boolean onLongClick(View v) {
-                    return true;
-                }
-            });
-
             mLoadError.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     mWebView.loadUrl(mWebView.getUrl());
