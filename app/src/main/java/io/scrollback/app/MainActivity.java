@@ -1,6 +1,7 @@
 package io.scrollback.app;
 
 import android.accounts.AccountManager;
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
@@ -16,6 +17,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.app.Activity;
 import android.util.Log;
@@ -95,9 +97,10 @@ public class MainActivity extends Activity {
     ArrayList<String> permissions;
 
     private ValueCallback<Uri> mUploadMessage;
-    private ValueCallback<Uri[]> mUploadMessages;
+    private ValueCallback<Uri[]> mUploadMessageArr;
 
-    private final static int FILECHOOSER_RESULTCODE = 19264;
+    private final static int REQUEST_SELECT_FILE_LEGACY = 19264;
+    private final static int REQUEST_SELECT_FILE = 19275;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -146,7 +149,7 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("*/*");
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
 
                 }
 
@@ -159,7 +162,7 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType(acceptType);
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
                 }
 
                 // For Android 4.1+
@@ -171,7 +174,32 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType(acceptType);
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
+                }
+
+                // For Android 5.0+
+                @SuppressLint("NewApi")
+                public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                    if (mUploadMessageArr != null) {
+                        mUploadMessageArr.onReceiveValue(null);
+                        mUploadMessageArr = null;
+                    }
+
+                    mUploadMessageArr = filePathCallback;
+
+                    Intent intent = fileChooserParams.createIntent();
+
+                    try {
+                        MainActivity.this.startActivityForResult(intent, REQUEST_SELECT_FILE);
+                    } catch (ActivityNotFoundException e) {
+                        mUploadMessageArr = null;
+
+                        Toast.makeText(MainActivity.this, "Cannot open file chooser", Toast.LENGTH_LONG).show();
+
+                        return false;
+                    }
+
+                    return true;
                 }
             });
 
@@ -482,17 +510,25 @@ public class MainActivity extends Activity {
         mWebView.destroy();
     }
 
+    @SuppressLint("NewApi")
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == FILECHOOSER_RESULTCODE) {
-            if (null == mUploadMessage) return;
+        if (requestCode == REQUEST_SELECT_FILE_LEGACY) {
+            if (mUploadMessage == null) return;
 
             Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
 
             mUploadMessage.onReceiveValue(result);
             mUploadMessage = null;
+        }
+
+        else if (requestCode == REQUEST_SELECT_FILE) {
+            if (mUploadMessageArr == null) return;
+
+            mUploadMessageArr.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            mUploadMessageArr = null;
         }
 
         else if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
