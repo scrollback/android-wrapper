@@ -17,7 +17,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.provider.Settings;
 import android.app.Activity;
 import android.util.Log;
@@ -52,7 +51,6 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 import static android.webkit.WebSettings.LOAD_DEFAULT;
@@ -141,6 +139,7 @@ public class MainActivity extends Activity {
 
             mWebView.setWebChromeClient(new WebChromeClient() {
                 // For Android < 3.0
+                @SuppressWarnings("unused")
                 public void openFileChooser(ValueCallback<Uri> uploadMsg) {
                     mUploadMessage = uploadMsg;
 
@@ -154,6 +153,7 @@ public class MainActivity extends Activity {
                 }
 
                 // For Android 3.0+
+                @SuppressWarnings("unused")
                 public void openFileChooser(ValueCallback uploadMsg, String acceptType) {
                     mUploadMessage = uploadMsg;
 
@@ -166,6 +166,7 @@ public class MainActivity extends Activity {
                 }
 
                 // For Android 4.1+
+                @SuppressWarnings("unused")
                 public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
                     mUploadMessage = uploadMsg;
 
@@ -226,6 +227,7 @@ public class MainActivity extends Activity {
 
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public boolean isFileUploadAvailable(final boolean needsCorrectMimeType) {
                     if (Build.VERSION.SDK_INT == 19) {
@@ -237,11 +239,13 @@ public class MainActivity extends Activity {
                     }
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public boolean isFileUploadAvailable() {
                     return isFileUploadAvailable(false);
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void setStatusBarColor() {
                     MainActivity.this.runOnUiThread(new Runnable() {
@@ -258,6 +262,7 @@ public class MainActivity extends Activity {
                     });
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void setStatusBarColor(final String color) {
                     MainActivity.this.runOnUiThread(new Runnable() {
@@ -274,6 +279,7 @@ public class MainActivity extends Activity {
                     });
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void shareItem(String title, String content) {
                     Intent sharingIntent = new Intent(Intent.ACTION_SEND);
@@ -284,6 +290,7 @@ public class MainActivity extends Activity {
                     startActivity(Intent.createChooser(sharingIntent, title));
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void copyToClipboard(String label, String text) {
                     ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
@@ -295,6 +302,7 @@ public class MainActivity extends Activity {
                     toast.show();
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void onFinishedLoading() {
                     runOnUiThread(new Runnable() {
@@ -305,6 +313,7 @@ public class MainActivity extends Activity {
                     });
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void googleLogin() {
                     Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
@@ -312,6 +321,7 @@ public class MainActivity extends Activity {
                     startActivityForResult(intent, SOME_REQUEST_CODE);
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void facebookLogin() {
                     // Get a handler that can be used to post to the main thread
@@ -326,11 +336,13 @@ public class MainActivity extends Activity {
                     mainHandler.post(myRunnable);
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void registerGCM() {
                     registerBackground();
                 }
 
+                @SuppressWarnings("unused")
                 @JavascriptInterface
                 public void unregisterGCM() {
                     unRegisterBackground();
@@ -367,13 +379,7 @@ public class MainActivity extends Activity {
             Session session = Session.getActiveSession();
 
             if (session == null) {
-                if (savedInstanceState != null) {
-                    session = Session.restoreSession(this, null, statusCallback, savedInstanceState);
-                }
-
-                if(session == null) {
-                    session = new Session(this);
-                }
+                session = new Session(this);
 
                 Session.setActiveSession(session);
                 session.addCallback(statusCallback);
@@ -443,6 +449,7 @@ public class MainActivity extends Activity {
 
     private WebViewClient mWebViewClient = new WebViewClient() {
 
+        @SuppressWarnings("unused")
         public boolean onConsoleMessage(ConsoleMessage cm) {
             Log.d(getString(R.string.app_name), cm.message() + " -- From line "
                     + cm.lineNumber() + " of "
@@ -586,15 +593,15 @@ public class MainActivity extends Activity {
                         }
 
                         if (user != null) {
-                            Map<String, Object> responseMap = new HashMap<String, Object>();
                             GraphObject graphObject = response.getGraphObject();
-                            responseMap = graphObject.asMap();
+                            Map<String, Object> responseMap = graphObject.asMap();
 
                             Log.i("FbLogin", "Response Map KeySet - " + responseMap.keySet());
 
-                            String fb_id = user.getId();
-                            String email = null;
-                            String name = (String) responseMap.get("name");
+                            // String fb_id = user.getId();
+                            // String name = (String) responseMap.get("name");
+
+                            String email;
 
                             if (responseMap.get("email") != null) {
                                 email = responseMap.get("email").toString();
@@ -684,10 +691,11 @@ public class MainActivity extends Activity {
 
             try {
                 GoogleAuthUtil.clearToken(getApplicationContext(), accessToken);
+
                 result = "true";
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
             } catch (GoogleAuthException e) {
+                Log.e(TAG, e.getMessage());
+            } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
             }
 
@@ -719,7 +727,7 @@ public class MainActivity extends Activity {
 
             @Override
             protected String doInBackground(Void... params) {
-                String msg = "";
+                String msg;
 
                 try {
                     if (gcm == null) {
@@ -816,7 +824,7 @@ public class MainActivity extends Activity {
      * @param regId   registration id
      */
     private void setRegistrationId(Context context, String regId) {
-        final SharedPreferences prefs = getGCMPreferences(context);
+        final SharedPreferences prefs = getGCMPreferences();
         int appVersion = getAppVersion(context);
 
         Log.v(TAG, "Saving regId on app version " + appVersion);
@@ -837,11 +845,12 @@ public class MainActivity extends Activity {
      * complete.
      */
     private String getRegistrationId(Context context) {
-        final SharedPreferences prefs = getGCMPreferences(context);
-        String registrationId = prefs.getString(PROPERTY_REG_ID, "");
+        final SharedPreferences prefs = getGCMPreferences();
+        final String registrationId = prefs.getString(PROPERTY_REG_ID, "");
 
         if (registrationId.length() == 0) {
             Log.v(TAG, "Registration not found.");
+
             return "";
         }
 
@@ -877,7 +886,7 @@ public class MainActivity extends Activity {
     /**
      * @return Application's {@code SharedPreferences}.
      */
-    private SharedPreferences getGCMPreferences(Context context) {
+    private SharedPreferences getGCMPreferences() {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
