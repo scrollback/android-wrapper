@@ -148,7 +148,7 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("*/*");
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
 
                 }
 
@@ -162,7 +162,7 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType(acceptType);
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
                 }
 
                 // For Android 4.1+
@@ -175,7 +175,7 @@ public class MainActivity extends Activity {
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType(acceptType);
 
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), REQUEST_SELECT_FILE_LEGACY);
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
                 }
 
                 // For Android 5.0+
@@ -195,7 +195,7 @@ public class MainActivity extends Activity {
                     } catch (ActivityNotFoundException e) {
                         mUploadMessageArr = null;
 
-                        Toast.makeText(MainActivity.this, "Cannot open file chooser", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, getString(R.string.file_chooser_error), Toast.LENGTH_LONG).show();
 
                         return false;
                     }
