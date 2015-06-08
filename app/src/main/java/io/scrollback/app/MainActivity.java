@@ -2,6 +2,7 @@ package io.scrollback.app;
 
 import android.accounts.AccountManager;
 import android.app.ProgressDialog;
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -22,6 +23,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -91,6 +94,11 @@ public class MainActivity extends Activity {
 
     ArrayList<String> permissions;
 
+    private ValueCallback<Uri> mUploadMessage;
+    private ValueCallback<Uri[]> mUploadMessages;
+
+    private final static int FILECHOOSER_RESULTCODE = 19264;
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -128,6 +136,45 @@ public class MainActivity extends Activity {
         else {
             mWebView.setWebViewClient(mWebViewClient);
 
+            mWebView.setWebChromeClient(new WebChromeClient() {
+                // For Android < 3.0
+                public void openFileChooser(ValueCallback<Uri> uploadMsg) {
+                    mUploadMessage = uploadMsg;
+
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+
+                }
+
+                // For Android 3.0+
+                public void openFileChooser(ValueCallback uploadMsg, String acceptType) {
+                    mUploadMessage = uploadMsg;
+
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType(acceptType);
+
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+                }
+
+                // For Android 4.1+
+                public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
+                    mUploadMessage = uploadMsg;
+
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType(acceptType);
+
+                    MainActivity.this.startActivityForResult(Intent.createChooser(i, "Select file"), FILECHOOSER_RESULTCODE);
+                }
+            });
+
             WebSettings mWebSettings = mWebView.getSettings();
 
             String appCachePath = getApplicationContext().getCacheDir().getAbsolutePath();
@@ -150,6 +197,22 @@ public class MainActivity extends Activity {
             }
 
             mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
+
+                @JavascriptInterface
+                public boolean isFileUploadAvailable(final boolean needsCorrectMimeType) {
+                    if (Build.VERSION.SDK_INT == 19) {
+                        final String platformVersion = (Build.VERSION.RELEASE == null) ? "" : Build.VERSION.RELEASE;
+
+                        return !needsCorrectMimeType && (platformVersion.startsWith("4.4.3") || platformVersion.startsWith("4.4.4"));
+                    } else {
+                        return true;
+                    }
+                }
+
+                @JavascriptInterface
+                public boolean isFileUploadAvailable() {
+                    return isFileUploadAvailable(false);
+                }
 
                 @JavascriptInterface
                 public void setStatusBarColor() {
@@ -422,7 +485,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
+
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            if (null == mUploadMessage) return;
+
+            Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+
+            mUploadMessage.onReceiveValue(result);
+            mUploadMessage = null;
+        }
+
+        else if (requestCode == SOME_REQUEST_CODE && resultCode == RESULT_OK) {
             accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
 
             new RetrieveGoogleTokenTask().execute(accountName);
