@@ -127,263 +127,254 @@ public class MainActivity extends Activity {
             Log.i(TAG, "No valid Google Play Services APK found.");
         }
 
+        mWebView.setWebViewClient(mWebViewClient);
 
-        // Reload the old WebView content
-        if (savedInstanceState != null) {
-            mWebView.restoreState(savedInstanceState);
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            // For Android < 3.0
+            @SuppressWarnings("unused")
+            public void openFileChooser(ValueCallback<Uri> uploadMsg) {
+                mUploadMessage = uploadMsg;
+
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("*/*");
+
+                MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
+
+            }
+
+            // For Android 3.0+
+            @SuppressWarnings("unused")
+            public void openFileChooser(ValueCallback uploadMsg, String acceptType) {
+                mUploadMessage = uploadMsg;
+
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType(acceptType);
+
+                MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
+            }
+
+            // For Android 4.1+
+            @SuppressWarnings("unused")
+            public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
+                mUploadMessage = uploadMsg;
+
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType(acceptType);
+
+                MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
+            }
+
+            // For Android 5.0+
+            @SuppressLint("NewApi")
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                if (mUploadMessageArr != null) {
+                    mUploadMessageArr.onReceiveValue(null);
+                    mUploadMessageArr = null;
+                }
+
+                mUploadMessageArr = filePathCallback;
+
+                Intent intent = fileChooserParams.createIntent();
+
+                try {
+                    MainActivity.this.startActivityForResult(intent, REQUEST_SELECT_FILE);
+                } catch (ActivityNotFoundException e) {
+                    mUploadMessageArr = null;
+
+                    Toast.makeText(MainActivity.this, getString(R.string.file_chooser_error), Toast.LENGTH_LONG).show();
+
+                    return false;
+                }
+
+                return true;
+            }
+        });
+
+        WebSettings mWebSettings = mWebView.getSettings();
+
+        String appCachePath = getApplicationContext().getCacheDir().getAbsolutePath();
+
+        mWebSettings.setJavaScriptEnabled(true);
+        mWebSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        mWebSettings.setSupportZoom(false);
+        mWebSettings.setSaveFormData(true);
+        mWebSettings.setDomStorageEnabled(true);
+        mWebSettings.setAppCacheEnabled(true);
+        mWebSettings.setAppCachePath(appCachePath);
+        mWebSettings.setAllowFileAccess(true);
+        mWebSettings.setCacheMode(LOAD_DEFAULT);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            String databasePath = getApplicationContext().getDir("databases", Context.MODE_PRIVATE).getPath();
+
+            mWebSettings.setDatabaseEnabled(true);
+            mWebSettings.setDatabasePath(databasePath);
         }
 
-        // Create the WebView
-        else {
-            mWebView.setWebViewClient(mWebViewClient);
+        mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
 
-            mWebView.setWebChromeClient(new WebChromeClient() {
-                // For Android < 3.0
-                @SuppressWarnings("unused")
-                public void openFileChooser(ValueCallback<Uri> uploadMsg) {
-                    mUploadMessage = uploadMsg;
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public boolean isFileUploadAvailable(final boolean needsCorrectMimeType) {
+                if (Build.VERSION.SDK_INT == 19) {
+                    final String platformVersion = (Build.VERSION.RELEASE == null) ? "" : Build.VERSION.RELEASE;
 
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("*/*");
-
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
-
-                }
-
-                // For Android 3.0+
-                @SuppressWarnings("unused")
-                public void openFileChooser(ValueCallback uploadMsg, String acceptType) {
-                    mUploadMessage = uploadMsg;
-
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType(acceptType);
-
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
-                }
-
-                // For Android 4.1+
-                @SuppressWarnings("unused")
-                public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture) {
-                    mUploadMessage = uploadMsg;
-
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType(acceptType);
-
-                    MainActivity.this.startActivityForResult(Intent.createChooser(i, getString(R.string.select_file)), REQUEST_SELECT_FILE_LEGACY);
-                }
-
-                // For Android 5.0+
-                @SuppressLint("NewApi")
-                public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
-                    if (mUploadMessageArr != null) {
-                        mUploadMessageArr.onReceiveValue(null);
-                        mUploadMessageArr = null;
-                    }
-
-                    mUploadMessageArr = filePathCallback;
-
-                    Intent intent = fileChooserParams.createIntent();
-
-                    try {
-                        MainActivity.this.startActivityForResult(intent, REQUEST_SELECT_FILE);
-                    } catch (ActivityNotFoundException e) {
-                        mUploadMessageArr = null;
-
-                        Toast.makeText(MainActivity.this, getString(R.string.file_chooser_error), Toast.LENGTH_LONG).show();
-
-                        return false;
-                    }
-
+                    return !needsCorrectMimeType && (platformVersion.startsWith("4.4.3") || platformVersion.startsWith("4.4.4"));
+                } else {
                     return true;
                 }
-            });
-
-            WebSettings mWebSettings = mWebView.getSettings();
-
-            String appCachePath = getApplicationContext().getCacheDir().getAbsolutePath();
-
-            mWebSettings.setJavaScriptEnabled(true);
-            mWebSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-            mWebSettings.setSupportZoom(false);
-            mWebSettings.setSaveFormData(true);
-            mWebSettings.setDomStorageEnabled(true);
-            mWebSettings.setAppCacheEnabled(true);
-            mWebSettings.setAppCachePath(appCachePath);
-            mWebSettings.setAllowFileAccess(true);
-            mWebSettings.setCacheMode(LOAD_DEFAULT);
-
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                String databasePath = getApplicationContext().getDir("databases", Context.MODE_PRIVATE).getPath();
-
-                mWebSettings.setDatabaseEnabled(true);
-                mWebSettings.setDatabasePath(databasePath);
             }
 
-            mWebView.addJavascriptInterface(new ScrollbackInterface(getApplicationContext()) {
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public boolean isFileUploadAvailable() {
+                return isFileUploadAvailable(false);
+            }
 
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public boolean isFileUploadAvailable(final boolean needsCorrectMimeType) {
-                    if (Build.VERSION.SDK_INT == 19) {
-                        final String platformVersion = (Build.VERSION.RELEASE == null) ? "" : Build.VERSION.RELEASE;
-
-                        return !needsCorrectMimeType && (platformVersion.startsWith("4.4.3") || platformVersion.startsWith("4.4.4"));
-                    } else {
-                        return true;
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void setStatusBarColor() {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            try {
+                                getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
+                            } catch (Exception e) {
+                                Log.d(TAG, "Failed to set statusbar color " + e);
+                            }
+                        }
                     }
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public boolean isFileUploadAvailable() {
-                    return isFileUploadAvailable(false);
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void setStatusBarColor() {
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                try {
-                                    getWindow().setStatusBarColor(getResources().getColor(R.color.primary_dark));
-                                } catch (Exception e) {
-                                    Log.d(TAG, "Failed to set statusbar color " + e);
-                                }
-                            }
-                        }
-                    });
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void setStatusBarColor(final String color) {
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                try {
-                                    getWindow().setStatusBarColor(Color.parseColor(color));
-                                } catch (Exception e) {
-                                    Log.d(TAG, "Failed to set statusbar color to " + color + " " + e);
-                                }
-                            }
-                        }
-                    });
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void shareItem(String title, String content) {
-                    Intent sharingIntent = new Intent(Intent.ACTION_SEND);
-
-                    sharingIntent.setType("text/plain");
-                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, content);
-
-                    startActivity(Intent.createChooser(sharingIntent, title));
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void copyToClipboard(String label, String text) {
-                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    ClipData clip = ClipData.newPlainText(label, text);
-
-                    clipboard.setPrimaryClip(clip);
-
-                    Toast toast = Toast.makeText(MainActivity.this, getString(R.string.clipboard_success), Toast.LENGTH_SHORT);
-                    toast.show();
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void onFinishedLoading() {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            hideLoading();
-                        }
-                    });
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void googleLogin() {
-                    Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
-                            false, null, null, null, null);
-                    startActivityForResult(intent, SOME_REQUEST_CODE);
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void facebookLogin() {
-                    // Get a handler that can be used to post to the main thread
-                    Handler mainHandler = new Handler(MainActivity.this.getMainLooper());
-
-                    Runnable myRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            doFacebookLogin();
-                        }
-                    };
-                    mainHandler.post(myRunnable);
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void registerGCM() {
-                    registerBackground();
-                }
-
-                @SuppressWarnings("unused")
-                @JavascriptInterface
-                public void unregisterGCM() {
-                    unRegisterBackground();
-
-                }
-            }, "Android");
-
-            Intent intent = getIntent();
-            String action = intent.getAction();
-            Uri uri = intent.getData();
-
-            if (intent.hasExtra("scrollback_path")) {
-                mWebView.loadUrl(INDEX + getIntent().getStringExtra("scrollback_path"));
-            } else if (Intent.ACTION_VIEW.equals(action) && uri != null) {
-                final String URL = uri.toString();
-
-                mWebView.loadUrl(URL);
-            } else {
-                mWebView.loadUrl(HOME);
+                });
             }
 
-            mLoadError.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    mWebView.loadUrl(mWebView.getUrl());
-
-                    mLoadError.setVisibility(View.GONE);
-
-                    showLoading();
-                }
-            });
-
-            showLoading();
-
-            Session session = Session.getActiveSession();
-
-            if (session == null) {
-                session = new Session(this);
-
-                Session.setActiveSession(session);
-                session.addCallback(statusCallback);
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void setStatusBarColor(final String color) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            try {
+                                getWindow().setStatusBarColor(Color.parseColor(color));
+                            } catch (Exception e) {
+                                Log.d(TAG, "Failed to set statusbar color to " + color + " " + e);
+                            }
+                        }
+                    }
+                });
             }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void shareItem(String title, String content) {
+                Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+
+                sharingIntent.setType("text/plain");
+                sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, content);
+
+                startActivity(Intent.createChooser(sharingIntent, title));
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void copyToClipboard(String label, String text) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText(label, text);
+
+                clipboard.setPrimaryClip(clip);
+
+                Toast toast = Toast.makeText(MainActivity.this, getString(R.string.clipboard_success), Toast.LENGTH_SHORT);
+                toast.show();
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void onFinishedLoading() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        hideLoading();
+                    }
+                });
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void googleLogin() {
+                Intent intent = AccountPicker.newChooseAccountIntent(null, null, new String[]{"com.google"},
+                        false, null, null, null, null);
+                startActivityForResult(intent, SOME_REQUEST_CODE);
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void facebookLogin() {
+                // Get a handler that can be used to post to the main thread
+                Handler mainHandler = new Handler(MainActivity.this.getMainLooper());
+
+                Runnable myRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        doFacebookLogin();
+                    }
+                };
+                mainHandler.post(myRunnable);
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void registerGCM() {
+                registerBackground();
+            }
+
+            @SuppressWarnings("unused")
+            @JavascriptInterface
+            public void unregisterGCM() {
+                unRegisterBackground();
+
+            }
+        }, "Android");
+
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        Uri uri = intent.getData();
+
+        if (intent.hasExtra("scrollback_path")) {
+            mWebView.loadUrl(INDEX + getIntent().getStringExtra("scrollback_path"));
+        } else if (Intent.ACTION_VIEW.equals(action) && uri != null) {
+            final String URL = uri.toString();
+
+            mWebView.loadUrl(URL);
+        } else {
+            mWebView.loadUrl(HOME);
+        }
+
+        mLoadError.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                mWebView.loadUrl(mWebView.getUrl());
+
+                mLoadError.setVisibility(View.GONE);
+
+                showLoading();
+            }
+        });
+
+        showLoading();
+
+        Session session = Session.getActiveSession();
+
+        if (session == null) {
+            session = new Session(this);
+
+            Session.setActiveSession(session);
+            session.addCallback(statusCallback);
         }
     }
 
