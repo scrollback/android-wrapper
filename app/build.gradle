@@ -29,5 +29,5 @@ dependencies {
     compile 'com.android.support:support-v13:22.2.0'
     compile 'com.android.support:appcompat-v7:22.2.0'
     compile 'com.google.android.gms:play-services:7.3.0'
-    compile 'com.facebook.android:facebook-android-sdk:3.23.1'
+    compile 'com.facebook.android:facebook-android-sdk:4.1.0'
 }
