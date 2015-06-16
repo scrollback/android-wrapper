@@ -33,14 +33,15 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.facebook.AppEventsLogger;
-import com.facebook.Request;
-import com.facebook.Response;
-import com.facebook.Session;
-import com.facebook.SessionState;
-import com.facebook.model.GraphObject;
-import com.facebook.model.GraphUser;
 
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.FacebookSdk;
+import com.facebook.GraphRequest;
+import com.facebook.GraphResponse;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
@@ -49,8 +50,11 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
 import static android.webkit.WebSettings.LOAD_DEFAULT;
@@ -92,13 +96,13 @@ public class MainActivity extends Activity {
 
     ProgressDialog dialog;
 
-    ArrayList<String> permissions;
-
     private ValueCallback<Uri> mUploadMessage;
     private ValueCallback<Uri[]> mUploadMessageArr;
 
     private final static int REQUEST_SELECT_FILE_LEGACY = 19264;
     private final static int REQUEST_SELECT_FILE = 19275;
+
+    CallbackManager callbackManager;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -368,24 +372,15 @@ public class MainActivity extends Activity {
 
         showLoading();
 
-        Session session = Session.getActiveSession();
-
-        if (session == null) {
-            session = new Session(this);
-
-            Session.setActiveSession(session);
-            session.addCallback(statusCallback);
-        }
+        FacebookSdk.sdkInitialize(getApplicationContext());
+        callbackManager = CallbackManager.Factory.create();
+        LoginManager.getInstance().registerCallback(callbackManager, loginCallback);
     }
 
     void doFacebookLogin() {
-        Session session = Session.getActiveSession();
 
-        if(!session.isOpened()) {
-            session.openForRead(new Session.OpenRequest(MainActivity.this).setCallback(statusCallback).setPermissions(permissions).setRequestCode(FB_REQUEST_CODE_OPEN));
-        } else {
-            Session.openActiveSession(MainActivity.this, true, statusCallback);
-        }
+        LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile", "email"));
+
     }
 
     void hideLoading() {
@@ -479,27 +474,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        // Logs 'install' and 'app activate' App Events.
-        AppEventsLogger.activateApp(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Logs 'app deactivate' App Event.
-        AppEventsLogger.deactivateApp(this);
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        Session.saveSession(Session.getActiveSession(), outState);
 
         mWebView.saveState(outState);
     }
-
 
     @Override
     protected void onDestroy() {
@@ -540,80 +527,116 @@ public class MainActivity extends Activity {
             new RetrieveGoogleTokenTask().execute(accountName);
         }
 
-        else if (requestCode == FB_REQUEST_CODE_PERM || requestCode == FB_REQUEST_CODE_OPEN) {
-            if (Session.getActiveSession() != null) {
-                Session.getActiveSession().onActivityResult(MainActivity.this, requestCode, resultCode, data);
-
-            }
+        else {
+            callbackManager.onActivityResult(requestCode, resultCode, data);
 
         }
     }
 
-    Session.StatusCallback statusCallback = new Session.StatusCallback() {
+    FacebookCallback<LoginResult> loginCallback = new FacebookCallback<LoginResult>() {
         @Override
-        public void call(Session session, SessionState state, Exception exception) {
+        public void onSuccess(final LoginResult loginResult) {
 
-            Log.d("SessionState", state.toString());
-            processSessionStatus(session, state, exception);
+            if(loginResult.getRecentlyGrantedPermissions().contains("email")) {
+                GraphRequest.newMeRequest(
+                        loginResult.getAccessToken(), new GraphRequest.GraphJSONObjectCallback() {
+                            @Override
+                            public void onCompleted(JSONObject me, GraphResponse response) {
+                                if (response.getError() != null) {
+                                    // handle error
+                                } else {
+                                    String email = me.optString("email");
+                                    emitFacebookLoginEvent(email, loginResult.getAccessToken().getToken());
+                                    // send email and id to your web server
+                                }
+                            }
+                        }).executeAsync();
+            }
+            else {
+                Toast.makeText(MainActivity.this, "Something is wrong", Toast.LENGTH_SHORT).show();
+            }
+
+
+
+        }
+
+        @Override
+        public void onCancel() {
+
+        }
+
+        @Override
+        public void onError(FacebookException e) {
+
         }
     };
 
-    public void processSessionStatus(final Session session, SessionState state, Exception exception) {
-        if (exception!=null) {
-            Log.d("FBException", exception.getMessage());
-        }
-
-        Log.d("processSessionState", "State: " + state.toString());
-
-        if (session != null && session.isOpened()) {
-            if (session.getPermissions().contains("email")) {
-                session.getAccessToken();
-
-                //Show Progress Dialog
-                dialog = new ProgressDialog(MainActivity.this);
-
-                dialog.setMessage(getString(R.string.fb_signing_in));
-                dialog.show();
-
-                Request.newMeRequest(session, new Request.GraphUserCallback() {
-                    @Override
-                    public void onCompleted(GraphUser user, Response response) {
-
-                        if (dialog != null && dialog.isShowing()) {
-                            dialog.dismiss();
-                        }
-
-                        if (user != null) {
-                            GraphObject graphObject = response.getGraphObject();
-                            Map<String, Object> responseMap = graphObject.asMap();
-
-                            Log.i("FbLogin", "Response Map KeySet - " + responseMap.keySet());
-
-                            // String fb_id = user.getId();
-                            // String name = (String) responseMap.get("name");
-
-                            String email;
-
-                            if (responseMap.get("email") != null) {
-                                email = responseMap.get("email").toString();
-                                emitFacebookLoginEvent(email, session.getAccessToken());
-                            } else {
-                                // Clear all session info & ask user to login again
-                                Session session = Session.getActiveSession();
-
-                                if (session != null) {
-                                    session.closeAndClearTokenInformation();
-                                }
-                            }
-                        }
-                    }
-                }).executeAsync();
-
-            } else {
-                session.requestNewReadPermissions(new Session.NewPermissionsRequest(this, permissions).setRequestCode(FB_REQUEST_CODE_PERM));
-            }
-        }
-    }
+//    Session.StatusCallback statusCallback = new Session.StatusCallback() {
+//        @Override
+//        public void call(Session session, SessionState state, Exception exception) {
+//
+//            Log.d("SessionState", state.toString());
+//            processSessionStatus(session, state, exception);
+//        }
+//    };
+//
+//    public void processSessionStatus(final Session session, SessionState state, Exception exception) {
+//        if (exception!=null) {
+//            Log.d("FBException", exception.getMessage());
+//        }
+//
+//        Log.d("processSessionState", "State: " + state.toString());
+//
+//        if (session != null && session.isOpened()) {
+//            if (session.getPermissions().contains("email")) {
+//                session.getAccessToken();
+//
+//                //Show Progress Dialog
+//                dialog = new ProgressDialog(MainActivity.this);
+//
+//                dialog.setMessage(getString(R.string.fb_signing_in));
+//                dialog.show();
+//
+//                Request.newMeRequest(session, new Request.GraphUserCallback() {
+//                    @Override
+//                    public void onCompleted(GraphUser user, Response response) {
+//
+//                        if (dialog != null && dialog.isShowing()) {
+//                            dialog.dismiss();
+//                        }
+//
+//                        if (user != null) {
+//                            GraphObject graphObject = response.getGraphObject();
+//                            Map<String, Object> responseMap = graphObject.asMap();
+//
+//                            Log.i("FbLogin", "Response Map KeySet - " + responseMap.keySet());
+//
+//                            // String fb_id = user.getId();
+//                            // String name = (String) responseMap.get("name");
+//
+//                            String email;
+//
+//                            if (responseMap.get("email") != null) {
+//                                email = responseMap.get("email").toString();
+//                                emitFacebookLoginEvent(email, session.getAccessToken());
+//                            } else {
+//                                // Clear all session info & ask user to login again
+//                                Session session = Session.getActiveSession();
+//
+//                                if (session != null) {
+//                                    session.closeAndClearTokenInformation();
+//                                }
+//                            }
+//                        }
+//                    }
+//                }).executeAsync();
+//
+//            } else {
+//                LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile", "user_friends"));
+//                session.requestNewReadPermissions(new Session.NewPermissionsRequest(this, permissions).setRequestCode(FB_REQUEST_CODE_PERM));
+//            }
+//        }
+//    }
 
 
     private class RetrieveGoogleTokenTask extends AsyncTask<String, Void, String> {
