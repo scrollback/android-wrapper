@@ -61,7 +61,7 @@ public class GCMIntentService extends IntentService {
                 Notification notif = new Notification();
                 notif.setTitle(extras.getString("title", "Scrollback"));
                 notif.setText(extras.getString("text", "There is new activity"));
-                notif.setPath("/"+extras.getString("path", "me"));
+                notif.setPath(extras.getString("path", "me"));
 
                 // Post notification of received message if application isn't open
                 if (!Scrollback.appOpen)
