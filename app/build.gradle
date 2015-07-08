@@ -7,8 +7,8 @@ android {
     defaultConfig {
         applicationId "io.scrollback.app"
         minSdkVersion 14
-        targetSdkVersion 21
-        versionCode 136
+        targetSdkVersion 22
+        versionCode 139
         versionName "1.0"
     }
     buildTypes {}
