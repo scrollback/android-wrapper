@@ -8,7 +8,6 @@ import android.view.KeyEvent;
 
 import io.scrollback.library.ScrollbackFragment;
 
-
 public class MainActivity extends FragmentActivity {
 
     @Override
@@ -22,7 +21,22 @@ public class MainActivity extends FragmentActivity {
         transaction.add(R.id.main_framelayout, fragment);
         transaction.commit();
 
+        fragment.setLocation(Constants.PROTOCOL, Constants.HOST, Constants.PATH);
         fragment.setEnableDebug(BuildConfig.DEBUG);
+
+//        Intent intent = getIntent();
+//        String action = intent.getAction();
+//        Uri uri = intent.getData();
+//
+//        if (intent.hasExtra("scrollback_path")) {
+//            //mWebView.loadUrl(Constants.INDEX + getIntent().getStringExtra("scrollback_path"));
+//        } else if (Intent.ACTION_VIEW.equals(action) && uri != null) {
+//            final String URL = uri.toString();
+//
+//            mWebView.loadUrl(URL);
+//        } else {
+//            mWebView.loadUrl(Constants.HOME);
+//        }
     }
 
     ScrollbackFragment fragment = new ScrollbackFragment() {
