@@ -3,6 +3,7 @@ package io.scrollback.app;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
@@ -27,6 +28,11 @@ public class MainActivity extends FragmentActivity {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.add(R.id.main_framelayout, fragment);
         transaction.commit();
+        Intent intent = getIntent();
+
+        if (intent.hasExtra("scrollback_path")) {
+            // TODO use getIntent().getStringExtra("scrollback_path"));
+        }
 
 
     }
