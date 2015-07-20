@@ -9,6 +9,6 @@ import io.scrollback.library.ScrollbackIntentService;
 public class BroadcastReceiver extends ScrollbackBroadcastReceiver {
     @Override
     public void setIntentServiceName(String intentServiceName) {
-        super.setIntentServiceName(ScrollbackIntentService.class.getName());
+        super.setIntentServiceName(IntentService.class.getName());
     }
 }
