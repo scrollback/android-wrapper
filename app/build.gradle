@@ -12,6 +12,16 @@ android {
         versionName "1.0"
     }
     buildTypes {}
+    productFlavors {
+        production {
+        }
+        staging {
+            applicationId "io.scrollback.app.staging"
+        }
+        development {
+            applicationId "io.scrollback.app.development"
+        }
+    }
 }
 
 dependencies {
