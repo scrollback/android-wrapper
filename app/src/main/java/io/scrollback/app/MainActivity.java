@@ -1,6 +1,7 @@
 package io.scrollback.app;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
@@ -20,6 +21,16 @@ public class MainActivity extends FragmentActivity {
 
         transaction.add(R.id.main_framelayout, fragment);
         transaction.commit();
+
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        Uri uri = intent.getData();
+
+        if (intent.hasExtra("scrollback_path")) {
+            fragment.navigateTo(getIntent().getStringExtra("scrollback_path"));
+        } else if (Intent.ACTION_VIEW.equals(action) && uri != null) {
+            fragment.navigateTo(uri);
+        }
 
         fragment.setLocation(Constants.PROTOCOL, Constants.HOST, Constants.PATH);
         fragment.setEnableDebug(BuildConfig.DEBUG);
