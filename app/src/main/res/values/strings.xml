@@ -3,4 +3,7 @@
 
     <string name="app_host">scrollback.io</string>
 
+    <string name="gcm_sender_id">73969137499</string>
+    <string name="fb_app_id">1389363534614084</string>
+
 </resources>
